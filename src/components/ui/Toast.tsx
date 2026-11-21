@@ -1,3 +1,5 @@
+'use client';
+
 import React, { createContext, useContext, useState, useCallback, useId } from 'react';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
