@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { EngineInitializer } from '@/components/EngineInitializer';
 
 export const metadata: Metadata = {
   title: 'GATC — Gestor de Análisis para Tendidos y Costos',
@@ -26,6 +27,7 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen">
+        <EngineInitializer />
         {children}
       </body>
     </html>

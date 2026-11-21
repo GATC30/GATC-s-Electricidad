@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Header, PhaseTabs, Toolbar, PropertiesPanel, Canvas2D } from '@/components/editor';
-import { Phase, ToolType, Wall, Box, Tube, ProjectConfig, ProjectState } from '@/engine/types';
+import { QuoteView, MemoryView } from '@/components/phases';
+import { Phase, ToolType, Wall, Box, Tube, ProjectConfig, ProjectState, CustomMaterial } from '@/engine/types';
 import { DEFAULT_WALL_WIDTH, DEFAULT_WALL_HEIGHT } from '@/engine/constants';
 import { ToastProvider, useToast } from '@/components/ui';
 
@@ -28,6 +29,9 @@ function EditorContent() {
   const [boxes, setBoxes] = useState<Box[]>([]);
   const [tubes, setTubes] = useState<Tube[]>([]);
   const [routes, setRoutes] = useState<any[]>([]);
+  const [customMats, setCustomMats] = useState<CustomMaterial[]>([]);
+  const [overrides, setOverrides] = useState<Record<string, number>>({});
+  const [prices, setPrices] = useState<Record<string, number>>({});
   const [projectConfig, setProjectConfig] = useState<ProjectConfig>({
     wW: DEFAULT_WALL_WIDTH,
     wH: DEFAULT_WALL_HEIGHT
@@ -42,10 +46,78 @@ function EditorContent() {
     element: null
   });
 
+  // Save current project state to localStorage
+  const saveToStorage = useCallback(
+    (
+      wList = walls,
+      bList = boxes,
+      tList = tubes,
+      rList = routes,
+      cList = customMats,
+      oList = overrides,
+      pList = prices,
+      cfg = projectConfig,
+      lvlList = levels
+    ) => {
+      try {
+        setIsSaved(false);
+        const stateToSave: ProjectState = {
+          phase: activePhase,
+          lvlId: currentLevel,
+          levels: lvlList,
+          is3D,
+          tool: activeTool,
+          showDims,
+          showRulers,
+          pConf: cfg,
+          walls: wList,
+          boxes: bList,
+          tubes: tList,
+          routes: rList,
+          customMats: cList,
+          overrides: oList,
+          prices: pList,
+          recentColors: []
+        };
+        localStorage.setItem(`ecad_data_${projectId}`, JSON.stringify(stateToSave));
+
+        // Update timestamp in project index
+        const storedIndex = localStorage.getItem('ecad_projects_index');
+        if (storedIndex) {
+          const indexList = JSON.parse(storedIndex);
+          const updated = indexList.map((p: any) =>
+            p.id === projectId ? { ...p, updated: Date.now() } : p
+          );
+          localStorage.setItem('ecad_projects_index', JSON.stringify(updated));
+        }
+        setIsSaved(true);
+      } catch (e) {
+        console.error('Error saving project:', e);
+      }
+    },
+    [
+      walls,
+      boxes,
+      tubes,
+      routes,
+      customMats,
+      overrides,
+      prices,
+      projectConfig,
+      levels,
+      activePhase,
+      currentLevel,
+      is3D,
+      activeTool,
+      showDims,
+      showRulers,
+      projectId
+    ]
+  );
+
   // Load project from localStorage
   useEffect(() => {
     try {
-      // 1. Get project metadata
       const storedIndex = localStorage.getItem('ecad_projects_index');
       if (storedIndex) {
         const indexList = JSON.parse(storedIndex);
@@ -55,7 +127,6 @@ function EditorContent() {
         }
       }
 
-      // 2. Get project full data
       const storedData = localStorage.getItem(`ecad_data_${projectId}`);
       if (storedData) {
         const data = JSON.parse(storedData);
@@ -65,6 +136,9 @@ function EditorContent() {
         if (data.routes) setRoutes(data.routes);
         if (data.levels) setLevels(data.levels);
         if (data.pConf) setProjectConfig(data.pConf);
+        if (data.customMats) setCustomMats(data.customMats);
+        if (data.overrides) setOverrides(data.overrides);
+        if (data.prices) setPrices(data.prices);
       }
     } catch (e) {
       console.error('Error loading project:', e);
@@ -74,7 +148,6 @@ function EditorContent() {
   // Handle Project Name Change
   const handleProjectNameChange = (newName: string) => {
     setProjectName(newName);
-    setIsSaved(false);
     try {
       const storedIndex = localStorage.getItem('ecad_projects_index');
       if (storedIndex) {
@@ -84,7 +157,6 @@ function EditorContent() {
         );
         localStorage.setItem('ecad_projects_index', JSON.stringify(updated));
       }
-      setIsSaved(true);
     } catch (_) {}
   };
 
@@ -94,15 +166,25 @@ function EditorContent() {
     const newLevels = [...levels, nextLevel];
     setLevels(newLevels);
     setCurrentLevel(nextLevel);
+    saveToStorage(walls, boxes, tubes, routes, customMats, overrides, prices, projectConfig, newLevels);
   };
 
   const handleDeleteLevel = (lvlToDelete: number) => {
     if (levels.length <= 1) return;
     const newLevels = levels.filter((l) => l !== lvlToDelete);
+    const newWalls = walls.filter((w) => w.lvl !== lvlToDelete);
+    const newBoxes = boxes.filter((b) => b.lvl !== lvlToDelete);
+    const newTubes = tubes.filter((t) => t.lvl !== lvlToDelete);
+
     setLevels(newLevels);
+    setWalls(newWalls);
+    setBoxes(newBoxes);
+    setTubes(newTubes);
+
     if (currentLevel === lvlToDelete) {
       setCurrentLevel(newLevels[0]);
     }
+    saveToStorage(newWalls, newBoxes, newTubes, routes, customMats, overrides, prices, projectConfig, newLevels);
   };
 
   // Export Project (.gatc JSON)
@@ -121,9 +203,9 @@ function EditorContent() {
         boxes,
         tubes,
         routes,
-        customMats: [],
-        overrides: {},
-        prices: {},
+        customMats,
+        overrides,
+        prices,
         recentColors: []
       };
 
@@ -139,6 +221,25 @@ function EditorContent() {
     } catch (err) {
       alert('Error exportando archivo .gatc');
     }
+  };
+
+  const fullProjectState: ProjectState = {
+    phase: activePhase,
+    lvlId: currentLevel,
+    levels,
+    is3D,
+    tool: activeTool,
+    showDims,
+    showRulers,
+    pConf: projectConfig,
+    walls,
+    boxes,
+    tubes,
+    routes,
+    customMats,
+    overrides,
+    prices,
+    recentColors: []
   };
 
   return (
@@ -176,50 +277,152 @@ function EditorContent() {
 
       {/* 3. Main Workspace Area */}
       <div className="flex-1 flex flex-col md:flex-row relative overflow-hidden">
-        {/* Left Toolbar (desktop) / Bottom Toolbar (mobile) */}
-        <Toolbar
-          activePhase={activePhase}
-          activeTool={activeTool}
-          onSelectTool={(t) => setActiveTool(t)}
-          onActionClick={(actionId) => {
-            console.log('Action triggered:', actionId);
-          }}
-        />
+        {/* Render Active Phase Content */}
+        {activePhase === 1 || activePhase === 2 ? (
+          <>
+            {/* Left Toolbar */}
+            <Toolbar
+              activePhase={activePhase}
+              activeTool={activeTool}
+              onSelectTool={(t) => setActiveTool(t)}
+            />
 
-        {/* Center Canvas Area */}
-        <div className="flex-1 relative h-full overflow-hidden">
-          <Canvas2D
-            phase={activePhase}
-            tool={activeTool}
-            zoom={1}
-            showDims={showDims}
-            showRulers={showRulers}
-          />
-        </div>
+            {/* Center Interactive CAD Canvas */}
+            <div className="flex-1 relative h-full overflow-hidden">
+              <Canvas2D
+                phase={activePhase}
+                tool={activeTool}
+                currentLevel={currentLevel}
+                walls={walls}
+                boxes={boxes}
+                tubes={tubes}
+                routes={routes}
+                projectConfig={projectConfig}
+                selectedElement={selectedElement}
+                onSelectElement={(type, element) => setSelectedElement({ type, element })}
+                onAddWall={(newWall) => {
+                  const updated = [...walls, newWall];
+                  setWalls(updated);
+                  saveToStorage(updated);
+                }}
+                onUpdateWall={(updatedWall) => {
+                  const updated = walls.map((w) => (w.id === updatedWall.id ? updatedWall : w));
+                  setWalls(updated);
+                  saveToStorage(updated);
+                }}
+                onAddBox={(newBox) => {
+                  const updated = [...boxes, newBox];
+                  setBoxes(updated);
+                  saveToStorage(walls, updated);
+                }}
+                onUpdateBox={(updatedBox) => {
+                  const updated = boxes.map((b) => (b.id === updatedBox.id ? updatedBox : b));
+                  setBoxes(updated);
+                  saveToStorage(walls, updated);
+                }}
+                onAddTube={(newTube) => {
+                  const updated = [...tubes, newTube];
+                  setTubes(updated);
+                  saveToStorage(walls, boxes, updated);
+                }}
+                onSaveState={() => saveToStorage()}
+                showDims={showDims}
+                showRulers={showRulers}
+              />
+            </div>
 
-        {/* Right Properties Panel (desktop) / Bottom sheet (mobile) */}
-        <PropertiesPanel
-          selectedElement={selectedElement}
-          projectConfig={projectConfig}
-          elementsCount={{
-            walls: walls.length,
-            boxes: boxes.length,
-            tubes: tubes.length,
-            routes: routes.length
-          }}
-          onUpdateProjectConfig={(updates) =>
-            setProjectConfig((prev) => ({ ...prev, ...updates }))
-          }
-          onDeleteElement={(type, id) => {
-            if (type === 'wall') setWalls((prev) => prev.filter((w) => w.id !== id));
-            if (type === 'box') setBoxes((prev) => prev.filter((b) => b.id !== id));
-            if (type === 'tube') setTubes((prev) => prev.filter((t) => t.id !== id));
-            setSelectedElement({ type: null, element: null });
-          }}
-          onZoomToFit={() => {
-            console.log('Zoom to fit requested');
-          }}
-        />
+            {/* Right Properties Panel */}
+            <PropertiesPanel
+              selectedElement={selectedElement}
+              projectConfig={projectConfig}
+              elementsCount={{
+                walls: walls.length,
+                boxes: boxes.length,
+                tubes: tubes.length,
+                routes: routes.length
+              }}
+              onUpdateWall={(id, updates) => {
+                const updated = walls.map((w) => (w.id === id ? { ...w, ...updates } : w));
+                setWalls(updated);
+                if (selectedElement.type === 'wall' && selectedElement.element?.id === id) {
+                  setSelectedElement({ type: 'wall', element: { ...selectedElement.element, ...updates } as Wall });
+                }
+                saveToStorage(updated);
+              }}
+              onUpdateBox={(id, updates) => {
+                const updated = boxes.map((b) => (b.id === id ? { ...b, ...updates } : b));
+                setBoxes(updated);
+                if (selectedElement.type === 'box' && selectedElement.element?.id === id) {
+                  setSelectedElement({ type: 'box', element: { ...selectedElement.element, ...updates } as Box });
+                }
+                saveToStorage(walls, updated);
+              }}
+              onUpdateTube={(id, updates) => {
+                const updated = tubes.map((t) => (t.id === id ? { ...t, ...updates } : t));
+                setTubes(updated);
+                if (selectedElement.type === 'tube' && selectedElement.element?.id === id) {
+                  setSelectedElement({ type: 'tube', element: { ...selectedElement.element, ...updates } as Tube });
+                }
+                saveToStorage(walls, boxes, updated);
+              }}
+              onUpdateProjectConfig={(updates) => {
+                const updated = { ...projectConfig, ...updates };
+                setProjectConfig(updated);
+                saveToStorage(walls, boxes, tubes, routes, customMats, overrides, prices, updated);
+              }}
+              onDeleteElement={(type, id) => {
+                if (type === 'wall') {
+                  const updated = walls.filter((w) => w.id !== id);
+                  setWalls(updated);
+                  saveToStorage(updated);
+                }
+                if (type === 'box') {
+                  const updated = boxes.filter((b) => b.id !== id);
+                  setBoxes(updated);
+                  saveToStorage(walls, updated);
+                }
+                if (type === 'tube') {
+                  const updated = tubes.filter((t) => t.id !== id);
+                  setTubes(updated);
+                  saveToStorage(walls, boxes, updated);
+                }
+                setSelectedElement({ type: null, element: null });
+              }}
+            />
+          </>
+        ) : activePhase === 3 ? (
+          /* Phase 3: Cotización / Presupuesto */
+          <div className="flex-1 overflow-y-auto h-full bg-[#080b12]">
+            <QuoteView
+              state={fullProjectState}
+              onUpdateOverrides={(key, val) => {
+                const updated = { ...overrides, [key]: val };
+                setOverrides(updated);
+                saveToStorage(walls, boxes, tubes, routes, customMats, updated);
+              }}
+              onUpdatePrices={(key, val) => {
+                const updated = { ...prices, [key]: val };
+                setPrices(updated);
+                saveToStorage(walls, boxes, tubes, routes, customMats, overrides, updated);
+              }}
+              onAddCustomMaterial={(mat) => {
+                const updated = [...customMats, mat];
+                setCustomMats(updated);
+                saveToStorage(walls, boxes, tubes, routes, updated);
+              }}
+              onDeleteCustomMaterial={(idx) => {
+                const updated = customMats.filter((_, i) => i !== idx);
+                setCustomMats(updated);
+                saveToStorage(walls, boxes, tubes, routes, updated);
+              }}
+            />
+          </div>
+        ) : (
+          /* Phase 4: Memoria Descriptiva */
+          <div className="flex-1 overflow-y-auto h-full bg-[#080b12]">
+            <MemoryView state={fullProjectState} />
+          </div>
+        )}
       </div>
     </div>
   );
