@@ -89,16 +89,16 @@
 
 | ID | Tarea | Prioridad | Ref Bug | Estado |
 |------|------|------|------|------|
-| F3-01 | Crear `src/utils/sanitize.ts` — Función de escape HTML para prevenir XSS en nombres de proyecto y etiquetas de dispositivos | 🟥 | BUG-01, BUG-02 | ⬜ |
-| F3-02 | Implementar try/catch en todas las operaciones de localStorage con notificación al usuario cuando la cuota se exceda | 🟥 | BUG-03 | ⬜ |
-| F3-03 | Cambiar selección por referencia a selección por ID: `selectedId: string | null` en el store, buscar el objeto fresco en cada render | 🟥 | BUG-04 | ⬜ |
-| F3-04 | Implementar disposición correcta de geometrías y materiales en el toggle 3D (recorrer `scene.traverse()` y hacer `.dispose()`) | 🟥 | BUG-05 | ⬜ |
-| F3-05 | Reemplazar `setTimeout(300)` en exportación PDF por `requestAnimationFrame` + `Promise` para esperar el render del DOM | 🟧 | BUG-06 | ⬜ |
-| F3-06 | Crear `src/lib/validators.ts` — Validación completa de archivos `.gatc` importados con schema (verificar `walls`, `boxes`, `tubes`, `routes`, `levels` con tipos correctos) | 🟧 | BUG-10 | ⬜ |
-| F3-07 | Reemplazar `Math.random().toString(36)` por `crypto.randomUUID()` en `generateId()` | 🟨 | BUG-09 | ⬜ |
-| F3-08 | Corregir selector CSS inválido `'tfoot text:last-child'` en la exportación PDF — eliminar selector muerto | 🟨 | BUG-07 | ⬜ |
-| F3-09 | Corregir protección de división por cero en `getRoomCenter` — reemplazar `+0.001` por verificación explícita de paredes horizontales/verticales | 🟨 | BUG-08 | ⬜ |
-| F3-10 | Implementar distinción tap vs drag en touch events: usar umbral de distancia mínima (5px) y tiempo (200ms) para diferenciar selección de arrastre | 🟧 | BUG-11 | ⬜ |
+| F3-01 | Crear `src/utils/sanitize.ts` — Función de escape HTML para prevenir XSS en nombres de proyecto y etiquetas de dispositivos | 🟥 | BUG-01, BUG-02 | ✅ |
+| F3-02 | Implementar try/catch en todas las operaciones de localStorage con notificación al usuario cuando la cuota se exceda | 🟥 | BUG-03 | ✅ |
+| F3-03 | Cambiar selección por referencia a selección por ID: `selectedId: string | null` en el store, buscar el objeto fresco en cada render | 🟥 | BUG-04 | ✅ |
+| F3-04 | Implementar disposición correcta de geometrías y materiales en el toggle 3D (recorrer `scene.traverse()` y hacer `.dispose()`) | 🟥 | BUG-05 | ✅ |
+| F3-05 | Reemplazar `setTimeout(300)` en exportación PDF por `requestAnimationFrame` + `Promise` para esperar el render del DOM | 🟧 | BUG-06 | ✅ |
+| F3-06 | Crear `src/lib/validators.ts` — Validación completa de archivos `.gatc` importados con schema (verificar `walls`, `boxes`, `tubes`, `routes`, `levels` con tipos correctos) | 🟧 | BUG-10 | ✅ |
+| F3-07 | Reemplazar `Math.random().toString(36)` por `crypto.randomUUID()` en `generateId()` | 🟨 | BUG-09 | ✅ |
+| F3-08 | Corregir selector CSS inválido `'tfoot text:last-child'` en la exportación PDF — eliminar selector muerto | 🟨 | BUG-07 | ✅ |
+| F3-09 | Corregir protección de división por cero en `getRoomCenter` — reemplazar `+0.001` por verificación explícita de paredes horizontales/verticales | 🟨 | BUG-08 | ✅ |
+| F3-10 | Implementar distinción tap vs drag en touch events: usar umbral de distancia mínima (5px) y tiempo (200ms) para diferenciar selección de arrastre | 🟧 | BUG-11 | ✅ |
 
 **Criterio de aceptación:** Ningún input del usuario se inyecta como HTML crudo. La app no crashea al llenar localStorage. El visor 3D no pierde memoria tras múltiples toggles. Todos los bugs del análisis (BUG-01 a BUG-11) están resueltos.
 
@@ -112,15 +112,15 @@
 
 | ID | Tarea | Prioridad | Estado |
 |------|------|------|------|
-| F4-01 | Crear `src/stores/editor-store.ts` — Store Zustand para estado del editor: `tool`, `phase`, `zoom`, `camera`, `selectedId`, `isDragging`, `drawTmp`, `wireRoute`. Usar Immer para inmutabilidad | 🟥 | ⬜ |
-| F4-02 | Crear `src/stores/project-store.ts` — Store Zustand para estado del proyecto: `walls`, `boxes`, `tubes`, `routes`, `levels`, `config`. Incluir acciones: `addWall`, `addBox`, `moveElement`, `deleteElement` | 🟥 | ⬜ |
-| F4-03 | Crear `src/engine/renderer2d.ts` — Función principal `render(ctx, state, env, phase)` que dibuja: grid, paredes (con miter), puertas/ventanas/escaleras, cajas, tuberías, cotas, selección, nodos. Migrar todo el `render()` actual | 🟥 | ⬜ |
-| F4-04 | Crear `src/engine/input-handler.ts` — Gestión unificada de eventos mouse/touch: `handleDown`, `handleMove`, `handleUp`, pinch-to-zoom, wheel zoom, pan. State Machine para herramientas (select, pan, wall, door, window, stairs, box_*, tube) | 🟥 | ⬜ |
-| F4-05 | Crear `src/hooks/useCanvas.ts` — Hook React que conecta el canvas HTML con el renderer y el input handler. Maneja resize, requestAnimationFrame loop, y pasa el state reactivo al motor | 🟧 | ⬜ |
-| F4-06 | Crear `src/hooks/useHistory.ts` — Hook para undo/redo con Command Pattern: `pushCommand(cmd)`, `undo()`, `redo()`, `canUndo`, `canRedo`. Máximo 50 estados (mejora sobre los 20 actuales) | 🟧 | ⬜ |
-| F4-07 | Implementar gestión de niveles completa: `addLevel()`, `deleteLevel()` (con limpieza de walls/boxes/tubes del nivel), `changeLevel()`, sincronización del selector desktop y mobile | 🟧 | ⬜ |
-| F4-08 | Implementar rulers (reglas) opcionales — Renderizar escalímetro en bordes superior e izquierdo del canvas con marcas cada metro y etiquetas de distancia | 🟨 | ⬜ |
-| F4-09 | Implementar ghost render del nivel inferior — Cuando `level > 1`, dibujar las paredes y elementos del nivel anterior en 15% de opacidad como referencia | 🟨 | ⬜ |
+| F4-01 | Crear `src/stores/editor-store.ts` — Store Zustand para estado del editor: `tool`, `phase`, `zoom`, `camera`, `selectedId`, `isDragging`, `drawTmp`, `wireRoute`. Usar Immer para inmutabilidad | 🟥 | ✅ |
+| F4-02 | Crear `src/stores/project-store.ts` — Store Zustand para estado del proyecto: `walls`, `boxes`, `tubes`, `routes`, `levels`, `config`. Incluir acciones: `addWall`, `addBox`, `moveElement`, `deleteElement` | 🟥 | ✅ |
+| F4-03 | Crear `src/engine/renderer2d.ts` — Función principal `render(ctx, state, env, phase)` que dibuja: grid, paredes (con miter), puertas/ventanas/escaleras, cajas, tuberías, cotas, selección, nodos. Migrar todo el `render()` actual | 🟥 | ✅ |
+| F4-04 | Crear `src/engine/input-handler.ts` — Gestión unificada de eventos mouse/touch: `handleDown`, `handleMove`, `handleUp`, pinch-to-zoom, wheel zoom, pan. State Machine para herramientas (select, pan, wall, door, window, stairs, box_*, tube) | 🟥 | ✅ |
+| F4-05 | Crear `src/hooks/useCanvas.ts` — Hook React que conecta el canvas HTML con el renderer y el input handler. Maneja resize, requestAnimationFrame loop, y pasa el state reactivo al motor | 🟧 | ✅ |
+| F4-06 | Crear `src/hooks/useHistory.ts` — Hook para undo/redo con Command Pattern: `pushCommand(cmd)`, `undo()`, `redo()`, `canUndo`, `canRedo`. Máximo 50 estados (mejora sobre los 20 actuales) | 🟧 | ✅ |
+| F4-07 | Implementar gestión de niveles completa: `addLevel()`, `deleteLevel()` (con limpieza de walls/boxes/tubes del nivel), `changeLevel()`, sincronización del selector desktop y mobile | 🟧 | ✅ |
+| F4-08 | Implementar rulers (reglas) opcionales — Renderizar escalímetro en bordes superior e izquierdo del canvas con marcas cada metro y etiquetas de distancia | 🟨 | ✅ |
+| F4-09 | Implementar ghost render del nivel inferior — Cuando `level > 1`, dibujar las paredes y elementos del nivel anterior en 15% de opacidad como referencia | 🟨 | ✅ |
 
 **Criterio de aceptación:** Se pueden dibujar paredes, insertar puertas/ventanas/escaleras/cajas, seleccionar y mover elementos, hacer zoom/pan, y deshacer/rehacer. Las cotas se muestran correctamente. Se pueden añadir/eliminar/cambiar niveles. Funciona en desktop y mobile.
 

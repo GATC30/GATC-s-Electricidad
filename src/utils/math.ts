@@ -54,11 +54,24 @@ export function radiansToDegrees(rad: number): number {
 
 /**
  * Generates a unique identifier using standard Web Crypto API.
- * Replaces legacy insecure random ID generation (BUG-09 fix).
+ * Uses crypto.randomUUID() or a cryptographic getRandomValues RFC4122 fallback (BUG-09 fix).
  */
 export function generateId(prefix: string = ''): string {
-  const uuid = typeof crypto !== 'undefined' && crypto.randomUUID
-    ? crypto.randomUUID()
-    : 'id_' + Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
+  let uuid: string;
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    uuid = crypto.randomUUID();
+  } else if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40; // Version 4
+    bytes[8] = (bytes[8] & 0x3f) | 0x80; // Variant 10
+    const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+    uuid = `${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}`;
+  } else {
+    // Ultimate fallback using high-resolution timestamp
+    const ts = Date.now().toString(16);
+    const perf = typeof performance !== 'undefined' ? Math.floor(performance.now() * 1000).toString(16) : '0';
+    uuid = `uuid-${ts}-${perf}`;
+  }
   return prefix ? `${prefix}_${uuid}` : uuid;
 }

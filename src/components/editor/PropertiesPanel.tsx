@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Wall, Box, Tube, ProjectConfig, DeviceKey } from '@/engine/types';
 import { CATALOG } from '@/engine/catalog';
 import { Button, Input, Select } from '@/components/ui';
+import { sanitizeLabel } from '@/utils/sanitize';
 
 export interface PropertiesPanelProps {
   selectedElement: {
@@ -300,7 +301,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                 placeholder="Ej. Lámpara Sala, Tablero P1"
                 onChange={(e) =>
                   onUpdateBox?.((element as Box).id, {
-                    label: e.target.value
+                    label: sanitizeLabel(e.target.value)
                   })
                 }
                 className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 outline-none focus:border-indigo-500"

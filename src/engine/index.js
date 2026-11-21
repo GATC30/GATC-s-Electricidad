@@ -3,4 +3,8 @@ export * from './catalog.js';
 export * from './geometry.js';
 export * from './bom.js';
 export * from './symbols.js';
+export * from './renderer2d.js';
+export * from './renderer3d.js';
 export * from '../utils/math.js';
+export * from '../utils/sanitize.js';
+export * from '../utils/storage.js';

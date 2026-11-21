@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { ProjectGrid } from '@/components/projects';
 import { ProjectSummary } from '@/components/projects/ProjectCard';
 import { ConfirmDialog } from '@/components/ui';
+import { sanitizeProjectName } from '@/utils/sanitize';
+import { safeSetItem, safeGetItem, safeRemoveItem } from '@/utils/storage';
+import { validateGatcFile } from '@/lib/validators';
 
 export default function HomePage() {
   const router = useRouter();
@@ -16,35 +19,29 @@ export default function HomePage() {
   // Load projects from localStorage (and populate demo projects if empty)
   useEffect(() => {
     try {
-      const storedIndex = localStorage.getItem('ecad_projects_index');
-      if (storedIndex) {
-        const parsed = JSON.parse(storedIndex);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const list: ProjectSummary[] = parsed.map((item: any) => {
-            const rawData = localStorage.getItem(`ecad_data_${item.id}`);
-            let wallsCount = 0;
-            let boxesCount = 0;
-            let circuitsCount = 0;
-            if (rawData) {
-              try {
-                const data = JSON.parse(rawData);
-                wallsCount = data.walls?.length || 0;
-                boxesCount = data.boxes?.length || 0;
-                circuitsCount = data.routes?.length || 0;
-              } catch (_) {}
-            }
-            return {
-              id: item.id,
-              name: item.name || 'Proyecto Sin Nombre',
-              updated: item.updated || Date.now(),
-              wallsCount,
-              boxesCount,
-              circuitsCount
-            };
-          });
-          setProjects(list);
-          return;
-        }
+      const storedIndex = safeGetItem<any[]>('ecad_projects_index', []);
+      if (Array.isArray(storedIndex) && storedIndex.length > 0) {
+        const list: ProjectSummary[] = storedIndex.map((item: any) => {
+          const rawData = safeGetItem<any>(`ecad_data_${item.id}`);
+          let wallsCount = 0;
+          let boxesCount = 0;
+          let circuitsCount = 0;
+          if (rawData) {
+            wallsCount = rawData.walls?.length || 0;
+            boxesCount = rawData.boxes?.length || 0;
+            circuitsCount = rawData.routes?.length || 0;
+          }
+          return {
+            id: item.id,
+            name: sanitizeProjectName(item.name || 'Proyecto Sin Nombre'),
+            updated: item.updated || Date.now(),
+            wallsCount,
+            boxesCount,
+            circuitsCount
+          };
+        });
+        setProjects(list);
+        return;
       }
 
       // Default demo projects if first time
@@ -67,7 +64,7 @@ export default function HomePage() {
         }
       ];
       setProjects(initialProjects);
-      localStorage.setItem('ecad_projects_index', JSON.stringify(initialProjects));
+      safeSetItem('ecad_projects_index', initialProjects);
     } catch (e) {
       console.error('Error loading projects from storage:', e);
     }
@@ -89,7 +86,7 @@ export default function HomePage() {
     const newId = `proj-${Date.now()}`;
     const newProj: ProjectSummary = {
       id: newId,
-      name: `Nuevo Proyecto ${projects.length + 1}`,
+      name: sanitizeProjectName(`Nuevo Proyecto ${projects.length + 1}`),
       updated: Date.now(),
       wallsCount: 0,
       boxesCount: 0,
@@ -98,48 +95,43 @@ export default function HomePage() {
 
     const updated = [newProj, ...projects];
     setProjects(updated);
-    try {
-      localStorage.setItem('ecad_projects_index', JSON.stringify(updated));
-    } catch (_) {}
+    safeSetItem('ecad_projects_index', updated);
 
     router.push(`/editor/${newId}`);
   };
 
   const handleRenameProject = (id: string, newName: string) => {
-    const updated = projects.map((p) => (p.id === id ? { ...p, name: newName, updated: Date.now() } : p));
+    const cleanName = sanitizeProjectName(newName);
+    const updated = projects.map((p) =>
+      p.id === id ? { ...p, name: cleanName, updated: Date.now() } : p
+    );
     setProjects(updated);
-    try {
-      localStorage.setItem('ecad_projects_index', JSON.stringify(updated));
-    } catch (_) {}
+    safeSetItem('ecad_projects_index', updated);
   };
 
   const handleDeleteConfirm = () => {
     if (!deleteId) return;
     const updated = projects.filter((p) => p.id !== deleteId);
     setProjects(updated);
-    try {
-      localStorage.setItem('ecad_projects_index', JSON.stringify(updated));
-      localStorage.removeItem(`ecad_data_${deleteId}`);
-    } catch (_) {}
+    safeSetItem('ecad_projects_index', updated);
+    safeRemoveItem(`ecad_data_${deleteId}`);
     setDeleteId(null);
   };
 
   const handleExportProject = (id: string) => {
     try {
-      const rawData = localStorage.getItem(`ecad_data_${id}`);
+      const rawData = safeGetItem<any>(`ecad_data_${id}`);
       const projectMeta = projects.find((p) => p.id === id);
-      const dataToExport = rawData
-        ? JSON.parse(rawData)
-        : {
-            id,
-            name: projectMeta?.name || 'Proyecto GATC',
-            version: '2.0',
-            exportedAt: new Date().toISOString(),
-            walls: [],
-            boxes: [],
-            tubes: [],
-            routes: []
-          };
+      const dataToExport = rawData || {
+        id,
+        name: projectMeta?.name || 'Proyecto GATC',
+        version: '2.0',
+        exportedAt: new Date().toISOString(),
+        walls: [],
+        boxes: [],
+        tubes: [],
+        routes: []
+      };
 
       const blob = new Blob([JSON.stringify(dataToExport, null, 2)], {
         type: 'application/json'
@@ -158,29 +150,44 @@ export default function HomePage() {
   const handleImportGatc = async (file: File) => {
     try {
       const text = await file.text();
-      const parsed = JSON.parse(text);
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        alert('Error al leer el archivo: El contenido no es un JSON válido.');
+        return;
+      }
 
-      const importedId = parsed.id || `proj-imp-${Date.now()}`;
-      const importedName = parsed.name || file.name.replace(/\.[^/.]+$/, '');
+      // Schema validation and sanitization (BUG-10 & BUG-01)
+      const validation = validateGatcFile(parsed);
+      if (!validation.isValid && validation.errors.length > 0) {
+        alert(`Error validando archivo .gatc:\n${validation.errors.slice(0, 3).join('\n')}`);
+        return;
+      }
+
+      const importedId = validation.projectId || `proj-imp-${Date.now()}`;
+      const importedName = validation.projectName || file.name.replace(/\.[^/.]+$/, '');
 
       const newSummary: ProjectSummary = {
         id: importedId,
         name: importedName,
         updated: Date.now(),
-        wallsCount: parsed.walls?.length || 0,
-        boxesCount: parsed.boxes?.length || 0,
-        circuitsCount: parsed.routes?.length || 0
+        wallsCount: validation.sanitizedState?.walls?.length || 0,
+        boxesCount: validation.sanitizedState?.boxes?.length || 0,
+        circuitsCount: validation.sanitizedState?.routes?.length || 0
       };
 
       const updated = [newSummary, ...projects.filter((p) => p.id !== importedId)];
       setProjects(updated);
 
-      localStorage.setItem('ecad_projects_index', JSON.stringify(updated));
-      localStorage.setItem(`ecad_data_${importedId}`, JSON.stringify(parsed));
+      safeSetItem('ecad_projects_index', updated);
+      if (validation.sanitizedState) {
+        safeSetItem(`ecad_data_${importedId}`, validation.sanitizedState);
+      }
 
       router.push(`/editor/${importedId}`);
     } catch (err) {
-      alert('Error al importar el archivo .gatc. Verifique que sea un JSON válido.');
+      alert('Error inesperado al importar el archivo .gatc.');
     }
   };
 
@@ -199,76 +206,50 @@ export default function HomePage() {
       {/* Background Architectural Blueprint Pattern */}
       <div className="fixed inset-0 opacity-15 pointer-events-none bg-[radial-gradient(#4f46e5_1px,transparent_1px)] [background-size:24px_24px]" />
 
-      {/* Dynamic Flashlight Glow */}
-      <div
-        className="fixed inset-0 pointer-events-none transition-[background] duration-75"
-        style={{
-          background: `radial-gradient(circle 650px at var(--mouseX) var(--mouseY), rgba(79, 70, 229, 0.12) 0%, rgba(15, 23, 42, 0.85) 60%, rgba(8, 11, 18, 0.98) 100%)`
-        }}
-      />
-
-      {/* Main Content Area */}
-      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
-        {/* Brand Header */}
-        <header className="text-center max-w-3xl mx-auto mb-14">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-semibold mb-6">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            GATC v2.0 Next-Gen CAD Engine
+      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16">
+        {/* Hero Section */}
+        <div className="flex flex-col items-center text-center mb-12 md:mb-16">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-4 shadow-sm">
+            <span>⚡ CAD Eléctrico & Obra Civil</span>
+            <span className="w-1 h-1 rounded-full bg-indigo-400" />
+            <span className="text-indigo-300">Versión 2.0</span>
           </div>
 
-          <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-300 via-indigo-100 to-purple-300 bg-clip-text text-transparent drop-shadow-sm">
-            GATC
-          </h1>
-          <p className="mt-3 text-base sm:text-lg text-indigo-200/80 font-medium tracking-wide">
-            Gestor de Análisis para Tendidos y Costos
-          </p>
-          <p className="mt-2 text-xs sm:text-sm text-slate-400 max-w-xl mx-auto">
-            Diseño arquitectónico, enrutamiento eléctrico automático, cálculo instantáneo de
-            materiales y presupuesto para instalaciones eléctricas.
-          </p>
-        </header>
-
-        {/* Projects Dashboard Section */}
-        <section className="space-y-6">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800/80">
-            <div>
-              <h2 className="text-xl font-bold text-white tracking-tight">Tus Proyectos</h2>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Selecciona un proyecto para abrir el lienzo de diseño o crea uno nuevo
-              </p>
-            </div>
-            <span className="text-xs font-medium text-slate-400 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
-              {projects.length} {projects.length === 1 ? 'proyecto' : 'proyectos'}
+          <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-white mb-4">
+            Gestor de Análisis para{' '}
+            <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+              Tendidos y Costos
             </span>
-          </div>
+          </h1>
 
-          <ProjectGrid
-            projects={projects}
-            onOpenProject={handleOpenProject}
-            onNewProject={handleNewProject}
-            onImportGatc={handleImportGatc}
-            onRenameProject={handleRenameProject}
-            onDeleteProject={(id) => setDeleteId(id)}
-            onExportProject={handleExportProject}
-          />
-        </section>
+          <p className="max-w-2xl text-slate-400 text-sm sm:text-base leading-relaxed">
+            Plataforma profesional para diseño de instalaciones eléctricas residenciales, cálculo de
+            BOM en tiempo real y generación automática de presupuestos y memorias descriptivas.
+          </p>
+        </div>
 
-        {/* Global Footer */}
-        <footer className="mt-24 pt-8 border-t border-slate-800/60 text-center text-xs text-slate-500">
-          <p>GATC — Gestor de Análisis para Tendidos y Costos &copy; 2026. Diseñado para ingeniería eléctrica.</p>
-        </footer>
+        {/* Project Grid with Import, Rename, Delete */}
+        <ProjectGrid
+          projects={projects}
+          onOpenProject={handleOpenProject}
+          onNewProject={handleNewProject}
+          onRenameProject={handleRenameProject}
+          onDeleteProject={(id) => setDeleteId(id)}
+          onExportProject={handleExportProject}
+          onImportFile={handleImportGatc}
+        />
       </main>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Confirmation Modal */}
       <ConfirmDialog
         isOpen={Boolean(deleteId)}
-        onClose={() => setDeleteId(null)}
-        onConfirm={handleDeleteConfirm}
-        title="¿Eliminar proyecto?"
-        description="Esta acción eliminará de forma permanente el proyecto seleccionado y todos sus planos, cajas y circuitos asociados. No se puede deshacer."
-        confirmLabel="Eliminar Proyecto"
-        cancelLabel="Cancelar"
+        title="¿Eliminar Proyecto Definitivamente?"
+        message="Esta acción no se puede deshacer. Se eliminarán todas las paredes, cajas eléctricas, circuitos y presupuestos asociados a este proyecto."
+        confirmText="Sí, Eliminar Proyecto"
+        cancelText="Cancelar"
         variant="danger"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeleteId(null)}
       />
     </div>
   );

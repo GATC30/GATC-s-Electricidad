@@ -433,7 +433,7 @@
                         grid.innerHTML += `
                             <div class="gatc-slot">
                                 <div class="w-full">
-                                    <input type="text" value="${proj.name}" class="proj-name-input" onchange="app.renameProject('${proj.id}', this.value)">
+                                    <input type="text" value="${GATC_ENGINE.escapeHtml(proj.name)}" class="proj-name-input" onchange="app.renameProject('${proj.id}', this.value)">
                                     <p class="text-xs text-indigo-300 text-center font-medium mt-1">Actualizado: ${dateStr}</p>
                                 </div>
                                 <div class="mt-4 flex flex-col gap-2 w-full">
@@ -474,7 +474,7 @@
             },
             renameProject(id, newName) {
                 const proj = this.projectIndex.find(p => p.id === id);
-                if(proj) { proj.name = newName; proj.updated = Date.now(); localStorage.setItem('ecad_projects_index', JSON.stringify(this.projectIndex)); }
+                if(proj) { proj.name = GATC_ENGINE.sanitizeProjectName(newName); proj.updated = Date.now(); localStorage.setItem('ecad_projects_index', JSON.stringify(this.projectIndex)); }
             },
             renameCurrentProject(newName) {
                 if(this.currentProjectId) { this.renameProject(this.currentProjectId, newName); }
@@ -510,20 +510,25 @@
                 reader.onload = (evt) => {
                     try {
                         const data = JSON.parse(evt.target.result);
-                        if(!data.walls || !data.boxes) throw new Error("Formato inválido");
+                        if(!data || typeof data !== 'object' || !Array.isArray(data.walls) || !Array.isArray(data.boxes)) {
+                            throw new Error("Estructura .gatc inválida (requiere paredes y cajas)");
+                        }
+                        if(data.tubes && !Array.isArray(data.tubes)) throw new Error("Formato de tuberías inválido");
+                        if(data.routes && !Array.isArray(data.routes)) throw new Error("Formato de rutas inválido");
+                        if(data.levels && !Array.isArray(data.levels)) throw new Error("Formato de niveles inválido");
                         
                         const id = 'p_' + this.genId();
                         const rawName = file.name.replace('.gatc', '').replace(/_/g, ' ');
-                        const name = rawName + ' (Importado)';
+                        const name = GATC_ENGINE.sanitizeProjectName(rawName + ' (Importado)');
                         
                         this.projectIndex.push({id, name, updated: Date.now()});
-                        localStorage.setItem('ecad_projects_index', JSON.stringify(this.projectIndex));
-                        localStorage.setItem('ecad_data_' + id, JSON.stringify(data));
+                        GATC_ENGINE.safeSetItem('ecad_projects_index', this.projectIndex);
+                        GATC_ENGINE.safeSetItem('ecad_data_' + id, data);
                         
                         this.checkLocal();
                         alert('Proyecto importado con éxito');
                     } catch(err) {
-                        alert('Error al leer el archivo. Asegúrate de que sea un archivo .gatc válido.');
+                        alert('Error al leer el archivo: ' + err.message);
                     }
                 };
                 reader.readAsText(file);
@@ -565,9 +570,14 @@
             resetState() { this.state = { phase:1, lvlId:1, levels:[1], is3D:false, tool:'select', showDims:true, showRulers:false, pConf:{wW:0.20, wH:2.80}, walls:[], boxes:[], tubes:[], routes:[], customMats:[], overrides:{}, prices:{}, recentColors:['#000000', '#ff0000', '#0000ff', '#ffffff', '#00ff00', '#ffff00', '#00ffff', '#ff00ff'] }; },
             save() { 
                 if(!this.currentProjectId) return;
-                localStorage.setItem('ecad_data_' + this.currentProjectId, JSON.stringify(this.state)); 
+                const res = GATC_ENGINE.safeSetItem('ecad_data_' + this.currentProjectId, this.state);
+                if(!res.success) {
+                    if (res.isQuota) {
+                        alert('Atención: La cuota de almacenamiento local (localStorage) está llena. Exporte sus proyectos como archivo .gatc y elimine algunos para no perder cambios.');
+                    }
+                }
                 const p = this.projectIndex.find(x => x.id === this.currentProjectId);
-                if(p) { p.updated = Date.now(); localStorage.setItem('ecad_projects_index', JSON.stringify(this.projectIndex)); }
+                if(p) { p.updated = Date.now(); GATC_ENGINE.safeSetItem('ecad_projects_index', this.projectIndex); }
             },
             pushHistory() { const s = JSON.stringify({ w:this.state.walls, b:this.state.boxes, t:this.state.tubes, r:this.state.routes }); if(this.historyIdx >= 0 && this.history[this.historyIdx] === s) return; this.history = this.history.slice(0, this.historyIdx + 1); this.history.push(s); if(this.history.length > 20) this.history.shift(); else this.historyIdx++; this.save(); },
             undo() { if(this.historyIdx > 0) { this.historyIdx--; this.loadHistory(); } }, redo() { if(this.historyIdx < this.history.length-1) { this.historyIdx++; this.loadHistory(); } },
@@ -1174,7 +1184,7 @@
                         h += `<button onclick="app.upd('b','${o.id}','flip',null)" class="w-full bg-slate-100 hover:bg-slate-200 border border-slate-300 py-1.5 rounded text-xs font-bold mb-3 transition shadow-sm">Invertir Lado (180°)</button>`;
                         h += `<div class="mt-2 pt-3 border-t border-slate-200"><label class="block text-xs font-bold text-indigo-600 mb-1 uppercase">Accesorio Eléctrico</label><select class="w-full border-2 border-indigo-200 p-2 rounded-lg text-sm bg-indigo-50 font-medium outline-none focus:border-indigo-500" onchange="app.upd('b','${o.id}','dev',this.value)">${opts}</select></div>`;
                         if(o.device) {
-                            h += `<div class="mt-3"><label class="block text-xs uppercase mb-1 font-bold">Etiqueta / Nombre (Opcional)</label><input type="text" placeholder="Ej. Luz Sala" class="w-full border p-1.5 rounded text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-500" value="${o.label||''}" onchange="app.upd('b','${o.id}','lbl',this.value)"></div>`;
+                            h += `<div class="mt-3"><label class="block text-xs uppercase mb-1 font-bold">Etiqueta / Nombre (Opcional)</label><input type="text" placeholder="Ej. Luz Sala" class="w-full border p-1.5 rounded text-sm bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-500" value="${GATC_ENGINE.escapeHtml(o.label||'')}" onchange="app.upd('b','${o.id}','lbl',this.value)"></div>`;
                             if(o.device === 'panel') {
                                 let copts = ''; [1, 2, 4, 6, 8, 10, 12, 14, 16].forEach(i => { copts += `<option value="${i}" ${o.circs===i?'selected':''}>${i} Polo${i===1?'':'s'}</option>`; });
                                 h += `<div class="mt-2"><label class="block text-xs uppercase mb-1 font-bold">Capacidad Tablero</label><select class="w-full border p-1.5 rounded bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-500" onchange="app.upd('b','${o.id}','circ',parseInt(this.value))">${copts}</select></div>`;
@@ -1193,7 +1203,7 @@
                 else if(f==='n2F') o.n2F = v;
                 else if(f==='grow') o.grow = v;
                 else if(f==='p') o.place = v; else if(f==='dev') { o.device = v||null; if(v && CATALOG[v]) o.z = CATALOG[v].z; }
-                else if(f==='lbl') o.label = v;
+                else if(f==='lbl') o.label = GATC_ENGINE.sanitizeLabel(v);
                 else if(f==='mx') o.mirrorX = v; else if(f==='my') o.mirrorY = v; else if(f==='circ') o.circs = v;
                 else if(f==='flip') o.rot = (o.rot + 180) % 360;
                 else if(f==='ww') {
@@ -1625,7 +1635,16 @@
                 this.state.is3D = !this.state.is3D;
                 const c2d = document.getElementById('canvas2d'), c3d = document.getElementById('d3-container'), ctrl = document.getElementById('d3-controls');
                 if(this.state.is3D) { c2d.style.display='none'; c3d.style.display='block'; ctrl.style.display='flex'; document.getElementById('btn-3d').innerHTML='<svg class="w-4 h-4 md:w-5 md:h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg> 2D'; this.init3D(); } 
-                else { c2d.style.display='block'; c3d.style.display='none'; ctrl.style.display='none'; document.getElementById('btn-3d').innerHTML='<svg class="w-4 h-4 md:w-5 md:h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg> 3D'; if(this.env.reqAnim) cancelAnimationFrame(this.env.reqAnim); if(this.refs.ren){this.refs.ren.dispose(); c3d.innerHTML=''; this.refs.ren=null; this.env.controls3D.dispose();} this.render(); }
+                else { 
+                    c2d.style.display='block'; c3d.style.display='none'; ctrl.style.display='none'; 
+                    document.getElementById('btn-3d').innerHTML='<svg class="w-4 h-4 md:w-5 md:h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg> 3D'; 
+                    if(this.env.reqAnim) cancelAnimationFrame(this.env.reqAnim); 
+                    if(this.refs.ren){
+                        if(this.refs.scene) { GATC_ENGINE.disposeThreeScene(this.refs.scene, this.refs.ren, this.env.controls3D); }
+                        c3d.innerHTML=''; this.refs.ren=null; this.refs.scene=null;
+                    } 
+                    this.render(); 
+                }
             },
             init3D() {
                 const c = document.getElementById('d3-container'); c.innerHTML='';
@@ -1930,7 +1949,7 @@
 
                     if(isCoti || isMemoria || isNomen) {
                         const prevPh = this.state.phase; this.setPhase(3);
-                        setTimeout(() => {
+                        requestAnimationFrame(() => requestAnimationFrame(() => {
                             if(isCoti) {
                                 if(hasPages) doc.addPage('letter', 'p'); else { doc.deletePage(1); doc.addPage('letter', 'p'); hasPages=true; }
                                 doc.setFontSize(16); doc.setTextColor(79, 70, 229); doc.text("Presupuesto de Materiales", 20, 25);
@@ -1948,7 +1967,7 @@
                                         if(yPos > 250) { addWatermarkAndFooter(doc, 215.9, 279.4); doc.addPage('letter', 'p'); doc.setTextColor(0,0,0); yPos=25; }
                                     }
                                 });
-                                const t = document.querySelector('tfoot text:last-child') || document.querySelector('tfoot td:last-child');
+                                const t = document.querySelector('tfoot td:last-child');
                                 const tText = t ? t.innerText : "Q 0.00";
                                 doc.setFont("helvetica", "bold"); doc.setTextColor(79, 70, 229); doc.text("TOTAL: " + tText, 135, yPos + 10);
                                 addWatermarkAndFooter(doc, 215.9, 279.4);
@@ -2029,7 +2048,7 @@
 
                             doc.save(fileName);
                             this.setPhase(prevPh); this.toast('PDF Exportado Exitosamente');
-                        }, 300);
+                        }));
                     } else {
                         doc.save(fileName); this.toast('PDF Exportado Exitosamente');
                     }

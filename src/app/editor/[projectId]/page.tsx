@@ -1,101 +1,110 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Header, PhaseTabs, Toolbar, PropertiesPanel, Canvas2D } from '@/components/editor';
 import { QuoteView, MemoryView } from '@/components/phases';
 import { Phase, ToolType, Wall, Box, Tube, ProjectConfig, ProjectState, CustomMaterial } from '@/engine/types';
-import { DEFAULT_WALL_WIDTH, DEFAULT_WALL_HEIGHT } from '@/engine/constants';
 import { ToastProvider, useToast } from '@/components/ui';
+import { sanitizeProjectName } from '@/utils/sanitize';
+import { safeSetItem, safeGetItem, onStorageError } from '@/utils/storage';
+import { validateGatcFile } from '@/lib/validators';
+import { generateProjectPDF } from '@/lib/pdf-generator';
+import { useEditorStore } from '@/stores/editor-store';
+import { useProjectStore, ProjectSnapshot } from '@/stores/project-store';
+import { useHistory } from '@/hooks/useHistory';
 
 function EditorContent() {
   const params = useParams();
   const router = useRouter();
+  const { addToast } = useToast();
   const projectId = (params?.projectId as string) || 'default-project';
 
-  // Editor UI State
-  const [projectName, setProjectName] = useState<string>('Proyecto CAD');
-  const [activePhase, setActivePhase] = useState<Phase>(1);
-  const [activeTool, setActiveTool] = useState<ToolType>('select');
-  const [currentLevel, setCurrentLevel] = useState<number>(1);
-  const [levels, setLevels] = useState<number[]>([1]);
-  const [showDims, setShowDims] = useState<boolean>(true);
-  const [showRulers, setShowRulers] = useState<boolean>(false);
-  const [is3D, setIs3D] = useState<boolean>(false);
-  const [isSaved, setIsSaved] = useState<boolean>(true);
+  // Editor Store
+  const {
+    tool: activeTool,
+    phase: activePhase,
+    currentLevel,
+    showDims,
+    showRulers,
+    is3D,
+    selectedId,
+    selectedType,
+    setTool: setActiveTool,
+    setPhase: setActivePhase,
+    setCurrentLevel,
+    toggleDims,
+    toggleRulers,
+    toggle3D,
+    setIs3D,
+    setSelected,
+    clearSelection
+  } = useEditorStore();
 
-  // CAD State Elements
-  const [walls, setWalls] = useState<Wall[]>([]);
-  const [boxes, setBoxes] = useState<Box[]>([]);
-  const [tubes, setTubes] = useState<Tube[]>([]);
-  const [routes, setRoutes] = useState<any[]>([]);
-  const [customMats, setCustomMats] = useState<CustomMaterial[]>([]);
-  const [overrides, setOverrides] = useState<Record<string, number>>({});
-  const [prices, setPrices] = useState<Record<string, number>>({});
-  const [projectConfig, setProjectConfig] = useState<ProjectConfig>({
-    wW: DEFAULT_WALL_WIDTH,
-    wH: DEFAULT_WALL_HEIGHT
+  // Project Store
+  const {
+    projectName,
+    levels,
+    walls,
+    boxes,
+    tubes,
+    routes,
+    customMats,
+    overrides,
+    prices,
+    config: projectConfig,
+    isSaved,
+    initProject,
+    setProjectName,
+    setConfig: setProjectConfig,
+    addWall,
+    updateWall,
+    deleteWall,
+    addBox,
+    updateBox,
+    deleteBox,
+    addTube,
+    updateTube,
+    deleteTube,
+    deleteElement,
+    addLevel,
+    deleteLevel,
+    setCustomMats,
+    setOverrides,
+    setPrices,
+    setIsSaved,
+    getSnapshot,
+    loadSnapshot
+  } = useProjectStore();
+
+  // Undo / Redo History Hook (F4-06: max 50 states)
+  const {
+    pushState,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    clearHistory
+  } = useHistory<ProjectSnapshot>(undefined, {
+    maxHistory: 50,
+    onApplySnapshot: (snap) => {
+      loadSnapshot(snap);
+      clearSelection();
+    }
   });
 
-  // Selected Element
-  const [selectedElement, setSelectedElement] = useState<{
-    type: 'wall' | 'box' | 'tube' | null;
-    element: Wall | Box | Tube | null;
-  }>({
-    type: null,
-    element: null
-  });
-
-  // Save current project state to localStorage
-  const saveToStorage = useCallback(
-    (
-      wList = walls,
-      bList = boxes,
-      tList = tubes,
-      rList = routes,
-      cList = customMats,
-      oList = overrides,
-      pList = prices,
-      cfg = projectConfig,
-      lvlList = levels
-    ) => {
-      try {
-        setIsSaved(false);
-        const stateToSave: ProjectState = {
-          phase: activePhase,
-          lvlId: currentLevel,
-          levels: lvlList,
-          is3D,
-          tool: activeTool,
-          showDims,
-          showRulers,
-          pConf: cfg,
-          walls: wList,
-          boxes: bList,
-          tubes: tList,
-          routes: rList,
-          customMats: cList,
-          overrides: oList,
-          prices: pList,
-          recentColors: []
-        };
-        localStorage.setItem(`ecad_data_${projectId}`, JSON.stringify(stateToSave));
-
-        // Update timestamp in project index
-        const storedIndex = localStorage.getItem('ecad_projects_index');
-        if (storedIndex) {
-          const indexList = JSON.parse(storedIndex);
-          const updated = indexList.map((p: any) =>
-            p.id === projectId ? { ...p, updated: Date.now() } : p
-          );
-          localStorage.setItem('ecad_projects_index', JSON.stringify(updated));
-        }
-        setIsSaved(true);
-      } catch (e) {
-        console.error('Error saving project:', e);
-      }
-    },
-    [
+  // Save current project state to localStorage using safeSetItem (BUG-03)
+  const saveToStorage = useCallback(() => {
+    setIsSaved(false);
+    const stateToSave: ProjectState = {
+      phase: activePhase,
+      lvlId: currentLevel,
+      levels,
+      is3D,
+      tool: activeTool,
+      showDims,
+      showRulers,
+      pConf: projectConfig,
       walls,
       boxes,
       tubes,
@@ -103,88 +112,202 @@ function EditorContent() {
       customMats,
       overrides,
       prices,
-      projectConfig,
-      levels,
-      activePhase,
-      currentLevel,
-      is3D,
-      activeTool,
-      showDims,
-      showRulers,
-      projectId
-    ]
-  );
+      recentColors: []
+    };
 
-  // Load project from localStorage
+    const result = safeSetItem(`ecad_data_${projectId}`, stateToSave);
+
+    // Update timestamp in project index
+    const indexList = safeGetItem<any[]>('ecad_projects_index', []);
+    if (Array.isArray(indexList)) {
+      const updated = indexList.map((p: any) =>
+        p.id === projectId ? { ...p, updated: Date.now() } : p
+      );
+      safeSetItem('ecad_projects_index', updated);
+    }
+
+    setIsSaved(result.success);
+  }, [
+    walls,
+    boxes,
+    tubes,
+    routes,
+    customMats,
+    overrides,
+    prices,
+    projectConfig,
+    levels,
+    activePhase,
+    currentLevel,
+    is3D,
+    activeTool,
+    showDims,
+    showRulers,
+    projectId,
+    setIsSaved
+  ]);
+
+  // Record history snapshot and auto-save on state change
+  const recordChange = useCallback(() => {
+    const snap = getSnapshot();
+    pushState(snap);
+    saveToStorage();
+  }, [getSnapshot, pushState, saveToStorage]);
+
+  // Derive fresh selected object dynamically in every render (BUG-04 fix)
+  const selectedElement = useMemo(() => {
+    if (!selectedId || !selectedType) return { type: null, element: null };
+
+    if (selectedType === 'wall') {
+      const w = walls.find((item) => item.id === selectedId) || null;
+      return { type: w ? ('wall' as const) : null, element: w };
+    }
+    if (selectedType === 'box') {
+      const b = boxes.find((item) => item.id === selectedId) || null;
+      return { type: b ? ('box' as const) : null, element: b };
+    }
+    if (selectedType === 'tube') {
+      const t = tubes.find((item) => item.id === selectedId) || null;
+      return { type: t ? ('tube' as const) : null, element: t };
+    }
+
+    return { type: null, element: null };
+  }, [selectedId, selectedType, walls, boxes, tubes]);
+
+  // Listen to storage errors (BUG-03: quota notification)
+  useEffect(() => {
+    const unsubscribe = onStorageError((message, isQuota) => {
+      addToast({
+        title: isQuota ? 'Almacenamiento Lleno' : 'Error de Guardado',
+        message,
+        type: isQuota ? 'warning' : 'error',
+        duration: 8000
+      });
+    });
+    return unsubscribe;
+  }, [addToast]);
+
+  // Load project from localStorage (with validation BUG-10 & XSS sanitization BUG-01)
   useEffect(() => {
     try {
-      const storedIndex = localStorage.getItem('ecad_projects_index');
-      if (storedIndex) {
-        const indexList = JSON.parse(storedIndex);
+      let loadedName = 'Proyecto CAD';
+      const indexList = safeGetItem<any[]>('ecad_projects_index', []);
+      if (Array.isArray(indexList)) {
         const meta = indexList.find((p: any) => p.id === projectId);
-        if (meta) {
-          setProjectName(meta.name);
+        if (meta && meta.name) {
+          loadedName = sanitizeProjectName(meta.name);
         }
       }
 
-      const storedData = localStorage.getItem(`ecad_data_${projectId}`);
+      const storedData = safeGetItem<any>(`ecad_data_${projectId}`);
       if (storedData) {
-        const data = JSON.parse(storedData);
-        if (data.walls) setWalls(data.walls);
-        if (data.boxes) setBoxes(data.boxes);
-        if (data.tubes) setTubes(data.tubes);
-        if (data.routes) setRoutes(data.routes);
-        if (data.levels) setLevels(data.levels);
-        if (data.pConf) setProjectConfig(data.pConf);
-        if (data.customMats) setCustomMats(data.customMats);
-        if (data.overrides) setOverrides(data.overrides);
-        if (data.prices) setPrices(data.prices);
+        const validation = validateGatcFile(storedData);
+        if (validation.sanitizedState) {
+          const s = validation.sanitizedState;
+          initProject(projectId, loadedName, s);
+          if (s.phase) setActivePhase(s.phase);
+          if (s.lvlId) setCurrentLevel(s.lvlId);
+          clearHistory({
+            walls: s.walls || [],
+            boxes: s.boxes || [],
+            tubes: s.tubes || [],
+            routes: s.routes || [],
+            levels: s.levels || [1],
+            config: s.pConf || { wW: 0.2, wH: 2.8 }
+          });
+          return;
+        }
       }
+
+      // Default initialization
+      initProject(projectId, loadedName);
+      clearHistory(getSnapshot());
     } catch (e) {
       console.error('Error loading project:', e);
     }
-  }, [projectId]);
+  }, [projectId, initProject, setActivePhase, setCurrentLevel, clearHistory, getSnapshot]);
 
-  // Handle Project Name Change
-  const handleProjectNameChange = (newName: string) => {
-    setProjectName(newName);
-    try {
-      const storedIndex = localStorage.getItem('ecad_projects_index');
-      if (storedIndex) {
-        const indexList = JSON.parse(storedIndex);
-        const updated = indexList.map((p: any) =>
-          p.id === projectId ? { ...p, name: newName, updated: Date.now() } : p
-        );
-        localStorage.setItem('ecad_projects_index', JSON.stringify(updated));
+  // Keyboard shortcuts (Ctrl+Z for Undo, Ctrl+Y for Redo)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        if (e.shiftKey) {
+          e.preventDefault();
+          if (canRedo) redo();
+        } else {
+          e.preventDefault();
+          if (canUndo) undo();
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        if (canRedo) redo();
       }
-    } catch (_) {}
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [canUndo, canRedo, undo, redo]);
+
+  // Handle Project Name Change (BUG-01 sanitization)
+  const handleProjectNameChange = (newName: string) => {
+    const cleanName = sanitizeProjectName(newName);
+    setProjectName(cleanName);
+
+    const indexList = safeGetItem<any[]>('ecad_projects_index', []);
+    if (Array.isArray(indexList)) {
+      const updated = indexList.map((p: any) =>
+        p.id === projectId ? { ...p, name: cleanName, updated: Date.now() } : p
+      );
+      safeSetItem('ecad_projects_index', updated);
+    }
   };
 
-  // Level Management
+  // Level Management (F4-07)
   const handleAddLevel = () => {
-    const nextLevel = Math.max(...levels, 0) + 1;
-    const newLevels = [...levels, nextLevel];
-    setLevels(newLevels);
-    setCurrentLevel(nextLevel);
-    saveToStorage(walls, boxes, tubes, routes, customMats, overrides, prices, projectConfig, newLevels);
+    const newLvl = addLevel();
+    setCurrentLevel(newLvl);
+    recordChange();
+    addToast({
+      title: 'Nivel Añadido',
+      message: `Se ha creado el Nivel ${newLvl}`,
+      type: 'success'
+    });
   };
 
   const handleDeleteLevel = (lvlToDelete: number) => {
-    if (levels.length <= 1) return;
-    const newLevels = levels.filter((l) => l !== lvlToDelete);
-    const newWalls = walls.filter((w) => w.lvl !== lvlToDelete);
-    const newBoxes = boxes.filter((b) => b.lvl !== lvlToDelete);
-    const newTubes = tubes.filter((t) => t.lvl !== lvlToDelete);
-
-    setLevels(newLevels);
-    setWalls(newWalls);
-    setBoxes(newBoxes);
-    setTubes(newTubes);
-
-    if (currentLevel === lvlToDelete) {
-      setCurrentLevel(newLevels[0]);
+    if (levels.length <= 1) {
+      addToast({
+        title: 'Operación no permitida',
+        message: 'No puedes borrar el único nivel del proyecto.',
+        type: 'warning'
+      });
+      return;
     }
-    saveToStorage(newWalls, newBoxes, newTubes, routes, customMats, overrides, prices, projectConfig, newLevels);
+
+    const result = deleteLevel(lvlToDelete);
+    if (result.success && result.nextLevel) {
+      setCurrentLevel(result.nextLevel);
+      recordChange();
+      addToast({
+        title: 'Nivel Eliminado',
+        message: `El Nivel ${lvlToDelete} ha sido eliminado.`,
+        type: 'info'
+      });
+    }
+  };
+
+  // Toggle 3D with memory disposal (BUG-05 fix)
+  const handleToggle3D = () => {
+    const next3D = !is3D;
+    if (!next3D) {
+      if (typeof window !== 'undefined') {
+        const d3Container = document.getElementById('d3-container');
+        if (d3Container) {
+          d3Container.innerHTML = '';
+        }
+      }
+    }
+    toggle3D();
   };
 
   // Export Project (.gatc JSON)
@@ -219,7 +342,65 @@ function EditorContent() {
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      alert('Error exportando archivo .gatc');
+      addToast({
+        title: 'Error de Exportación',
+        message: 'No se pudo generar el archivo .gatc',
+        type: 'error'
+      });
+    }
+  };
+
+  // Export PDF with requestAnimationFrame and without dead selectors (BUG-06, BUG-07)
+  const handleExportPDF = async () => {
+    try {
+      addToast({
+        title: 'Generando PDF',
+        message: 'Preparando planos y presupuesto...',
+        type: 'info',
+        duration: 3000
+      });
+
+      const fullProjectState: ProjectState = {
+        phase: activePhase,
+        lvlId: currentLevel,
+        levels,
+        is3D,
+        tool: activeTool,
+        showDims,
+        showRulers,
+        pConf: projectConfig,
+        walls,
+        boxes,
+        tubes,
+        routes,
+        customMats,
+        overrides,
+        prices,
+        recentColors: []
+      };
+
+      const pdf = await generateProjectPDF(projectName, fullProjectState, {
+        includeCivil: true,
+        includeElectrical: true,
+        includeQuote: true,
+        includeMemory: true,
+        includeNomenclature: true
+      });
+
+      pdf.save(`${projectName.replace(/\s+/g, '_')}_documentacion.pdf`);
+
+      addToast({
+        title: 'PDF Generado',
+        message: 'El documento se ha descargado correctamente.',
+        type: 'success'
+      });
+    } catch (err) {
+      console.error('Error generating PDF:', err);
+      addToast({
+        title: 'Error en PDF',
+        message: 'Ocurrió un problema al renderizar el documento PDF.',
+        type: 'error'
+      });
     }
   };
 
@@ -253,14 +434,16 @@ function EditorContent() {
         onSelectLevel={(lvl) => setCurrentLevel(lvl)}
         onAddLevel={handleAddLevel}
         onDeleteLevel={handleDeleteLevel}
-        canUndo={false}
-        canRedo={false}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={undo}
+        onRedo={redo}
         showDims={showDims}
-        onToggleDims={() => setShowDims(!showDims)}
+        onToggleDims={toggleDims}
         showRulers={showRulers}
-        onToggleRulers={() => setShowRulers(!showRulers)}
+        onToggleRulers={toggleRulers}
         is3D={is3D}
-        onToggle3D={() => setIs3D(!is3D)}
+        onToggle3D={handleToggle3D}
         onExport={handleExport}
         isSaved={isSaved}
       />
@@ -268,7 +451,17 @@ function EditorContent() {
       {/* 2. Phase Navigation Bar */}
       <div className="bg-slate-900/60 border-b border-slate-800/80 px-4 py-2 flex items-center justify-between">
         <PhaseTabs activePhase={activePhase} onChangePhase={(ph) => setActivePhase(ph)} />
-        <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400">
+        <div className="hidden sm:flex items-center gap-3 text-xs text-slate-400">
+          <button
+            onClick={handleExportPDF}
+            className="px-2.5 py-1 bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40 rounded-lg font-medium transition-colors flex items-center gap-1.5"
+            title="Descargar documentación en PDF"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Exportar PDF
+          </button>
           <span className="font-mono bg-slate-800 px-2 py-0.5 rounded text-[11px]">
             Escala: 40px = 1m
           </span>
@@ -277,7 +470,6 @@ function EditorContent() {
 
       {/* 3. Main Workspace Area */}
       <div className="flex-1 flex flex-col md:flex-row relative overflow-hidden">
-        {/* Render Active Phase Content */}
         {activePhase === 1 || activePhase === 2 ? (
           <>
             {/* Left Toolbar */}
@@ -289,46 +481,7 @@ function EditorContent() {
 
             {/* Center Interactive CAD Canvas */}
             <div className="flex-1 relative h-full overflow-hidden">
-              <Canvas2D
-                phase={activePhase}
-                tool={activeTool}
-                currentLevel={currentLevel}
-                walls={walls}
-                boxes={boxes}
-                tubes={tubes}
-                routes={routes}
-                projectConfig={projectConfig}
-                selectedElement={selectedElement}
-                onSelectElement={(type, element) => setSelectedElement({ type, element })}
-                onAddWall={(newWall) => {
-                  const updated = [...walls, newWall];
-                  setWalls(updated);
-                  saveToStorage(updated);
-                }}
-                onUpdateWall={(updatedWall) => {
-                  const updated = walls.map((w) => (w.id === updatedWall.id ? updatedWall : w));
-                  setWalls(updated);
-                  saveToStorage(updated);
-                }}
-                onAddBox={(newBox) => {
-                  const updated = [...boxes, newBox];
-                  setBoxes(updated);
-                  saveToStorage(walls, updated);
-                }}
-                onUpdateBox={(updatedBox) => {
-                  const updated = boxes.map((b) => (b.id === updatedBox.id ? updatedBox : b));
-                  setBoxes(updated);
-                  saveToStorage(walls, updated);
-                }}
-                onAddTube={(newTube) => {
-                  const updated = [...tubes, newTube];
-                  setTubes(updated);
-                  saveToStorage(walls, boxes, updated);
-                }}
-                onSaveState={() => saveToStorage()}
-                showDims={showDims}
-                showRulers={showRulers}
-              />
+              <Canvas2D onSaveState={recordChange} />
             </div>
 
             {/* Right Properties Panel */}
@@ -342,51 +495,34 @@ function EditorContent() {
                 routes: routes.length
               }}
               onUpdateWall={(id, updates) => {
-                const updated = walls.map((w) => (w.id === id ? { ...w, ...updates } : w));
-                setWalls(updated);
-                if (selectedElement.type === 'wall' && selectedElement.element?.id === id) {
-                  setSelectedElement({ type: 'wall', element: { ...selectedElement.element, ...updates } as Wall });
+                const wall = walls.find((w) => w.id === id);
+                if (wall) {
+                  updateWall({ ...wall, ...updates });
+                  recordChange();
                 }
-                saveToStorage(updated);
               }}
               onUpdateBox={(id, updates) => {
-                const updated = boxes.map((b) => (b.id === id ? { ...b, ...updates } : b));
-                setBoxes(updated);
-                if (selectedElement.type === 'box' && selectedElement.element?.id === id) {
-                  setSelectedElement({ type: 'box', element: { ...selectedElement.element, ...updates } as Box });
+                const box = boxes.find((b) => b.id === id);
+                if (box) {
+                  updateBox({ ...box, ...updates });
+                  recordChange();
                 }
-                saveToStorage(walls, updated);
               }}
               onUpdateTube={(id, updates) => {
-                const updated = tubes.map((t) => (t.id === id ? { ...t, ...updates } : t));
-                setTubes(updated);
-                if (selectedElement.type === 'tube' && selectedElement.element?.id === id) {
-                  setSelectedElement({ type: 'tube', element: { ...selectedElement.element, ...updates } as Tube });
+                const tube = tubes.find((t) => t.id === id);
+                if (tube) {
+                  updateTube({ ...tube, ...updates });
+                  recordChange();
                 }
-                saveToStorage(walls, boxes, updated);
               }}
               onUpdateProjectConfig={(updates) => {
-                const updated = { ...projectConfig, ...updates };
-                setProjectConfig(updated);
-                saveToStorage(walls, boxes, tubes, routes, customMats, overrides, prices, updated);
+                setProjectConfig(updates);
+                recordChange();
               }}
               onDeleteElement={(type, id) => {
-                if (type === 'wall') {
-                  const updated = walls.filter((w) => w.id !== id);
-                  setWalls(updated);
-                  saveToStorage(updated);
-                }
-                if (type === 'box') {
-                  const updated = boxes.filter((b) => b.id !== id);
-                  setBoxes(updated);
-                  saveToStorage(walls, updated);
-                }
-                if (type === 'tube') {
-                  const updated = tubes.filter((t) => t.id !== id);
-                  setTubes(updated);
-                  saveToStorage(walls, boxes, updated);
-                }
-                setSelectedElement({ type: null, element: null });
+                deleteElement(type, id, activePhase);
+                clearSelection();
+                recordChange();
               }}
             />
           </>
@@ -396,24 +532,20 @@ function EditorContent() {
             <QuoteView
               state={fullProjectState}
               onUpdateOverrides={(key, val) => {
-                const updated = { ...overrides, [key]: val };
-                setOverrides(updated);
-                saveToStorage(walls, boxes, tubes, routes, customMats, updated);
+                setOverrides({ ...overrides, [key]: val });
+                recordChange();
               }}
               onUpdatePrices={(key, val) => {
-                const updated = { ...prices, [key]: val };
-                setPrices(updated);
-                saveToStorage(walls, boxes, tubes, routes, customMats, overrides, updated);
+                setPrices({ ...prices, [key]: val });
+                recordChange();
               }}
               onAddCustomMaterial={(mat) => {
-                const updated = [...customMats, mat];
-                setCustomMats(updated);
-                saveToStorage(walls, boxes, tubes, routes, updated);
+                setCustomMats([...customMats, mat]);
+                recordChange();
               }}
               onDeleteCustomMaterial={(idx) => {
-                const updated = customMats.filter((_, i) => i !== idx);
-                setCustomMats(updated);
-                saveToStorage(walls, boxes, tubes, routes, updated);
+                setCustomMats(customMats.filter((_, i) => i !== idx));
+                recordChange();
               }}
             />
           </div>
