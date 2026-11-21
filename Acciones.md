@@ -70,12 +70,12 @@
 
 | ID | Tarea | Prioridad | Estado |
 |------|------|------|------|
-| F2-01 | Crear componentes UI reutilizables en `src/components/ui/`: `Button`, `Modal`, `Toast`, `Input`, `Select`, `Tooltip`, `ConfirmDialog` (reemplazar `confirm()` / `alert()` nativos) | 🟧 | ⬜ |
-| F2-02 | Crear `src/app/page.tsx` — Pantalla de inicio con `ProjectGrid` y `ProjectCard`, efecto linterna con CSS, botón de importar `.gatc` | 🟧 | ⬜ |
-| F2-03 | Crear `src/app/editor/[projectId]/page.tsx` — Layout del editor con `Header`, `PhaseTabs`, `Toolbar`, `Canvas2D` (placeholder), `PropertiesPanel` | 🟧 | ⬜ |
-| F2-04 | Crear `src/components/editor/Header.tsx` — Nombre del proyecto editable, botones undo/redo, controles de cotas/reglas, selector de nivel, botones 3D y exportar | 🟨 | ⬜ |
-| F2-05 | Crear `src/components/editor/Toolbar.tsx` — Barra lateral (desktop) / barra inferior (mobile) con herramientas dinámicas según la fase activa. Implementar con Strategy Pattern | 🟧 | ⬜ |
-| F2-06 | Crear `src/components/editor/PropertiesPanel.tsx` — Panel lateral (desktop) / bottom sheet (mobile) con propiedades del elemento seleccionado. Responsive con `mobile-bottom-sheet` | 🟨 | ⬜ |
+| F2-01 | Crear componentes UI reutilizables en `src/components/ui/`: `Button`, `Modal`, `Toast`, `Input`, `Select`, `Tooltip`, `ConfirmDialog` (reemplazar `confirm()` / `alert()` nativos) | 🟧 | ✅ |
+| F2-02 | Crear `src/app/page.tsx` — Pantalla de inicio con `ProjectGrid` y `ProjectCard`, efecto linterna con CSS, botón de importar `.gatc` | 🟧 | ✅ |
+| F2-03 | Crear `src/app/editor/[projectId]/page.tsx` — Layout del editor con `Header`, `PhaseTabs`, `Toolbar`, `Canvas2D` (placeholder), `PropertiesPanel` | 🟧 | ✅ |
+| F2-04 | Crear `src/components/editor/Header.tsx` — Nombre del proyecto editable, botones undo/redo, controles de cotas/reglas, selector de nivel, botones 3D y exportar | 🟨 | ✅ |
+| F2-05 | Crear `src/components/editor/Toolbar.tsx` — Barra lateral (desktop) / barra inferior (mobile) con herramientas dinámicas según la fase activa. Implementar con Strategy Pattern | 🟧 | ✅ |
+| F2-06 | Crear `src/components/editor/PropertiesPanel.tsx` — Panel lateral (desktop) / bottom sheet (mobile) con propiedades del elemento seleccionado. Responsive con `mobile-bottom-sheet` | 🟨 | ✅ |
 
 **Criterio de aceptación:** La app navega correctamente entre pantalla de inicio y editor. Los componentes renderizan con estilos correctos en desktop y mobile. El canvas está vacío pero el layout funciona.
 
