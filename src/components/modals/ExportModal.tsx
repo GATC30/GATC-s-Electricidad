@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Modal, Button } from '@/components/ui';
 import { ProjectState } from '@/engine/types';
-import { generateProjectPDF, PDFExportOptions } from '@/lib/pdf-generator';
+import type { PDFExportOptions } from '@/lib/pdf-generator';
 import { exportProject } from '@/lib/export';
 
 export interface ExportModalProps {
@@ -54,6 +54,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     setIsGeneratingPdf(true);
     try {
       onToast?.('Generando documento PDF en alta resolución (4×)...', 'info');
+      const { generateProjectPDF } = await import('@/lib/pdf-generator');
       const doc = await generateProjectPDF(projectName, state, options);
       const safeName = projectName.replace(/[^a-zA-Z0-9-_\s]/g, '').replace(/\s+/g, '_');
       doc.save(`${safeName}_documentacion.pdf`);

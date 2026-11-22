@@ -109,3 +109,31 @@ button, a, input, select, textarea {
   background-color: rgba(79, 70, 229, 0.35);
   color: inherit;
 }
+
+/* Accessibility: WCAG AA Visible Keyboard Focus */
+:focus-visible {
+  outline: 2px solid #6366f1 !important;
+  outline-offset: 2px !important;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+[role="button"]:focus-visible,
+[role="tab"]:focus-visible {
+  box-shadow: 0 0 0 2px #0f172a, 0 0 0 4px #6366f1 !important;
+}
+
+/* Accessibility: Reduced Motion (WCAG 2.1 - 2.3.3) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+

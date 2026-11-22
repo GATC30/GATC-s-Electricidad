@@ -2,9 +2,24 @@
 
 import React, { useEffect, useCallback, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Header, PhaseTabs, Toolbar, PropertiesPanel, Canvas2D, Viewer3D, StatusBar, Minimap, CommandPalette, OnboardingTour } from '@/components/editor';
+import dynamic from 'next/dynamic';
+import { Header, PhaseTabs, Toolbar, PropertiesPanel, Canvas2D, StatusBar, Minimap, CommandPalette, OnboardingTour } from '@/components/editor';
 import { QuoteView, MemoryView } from '@/components/phases';
 import { WireRouteModal, PricesModal, ExportModal } from '@/components/modals';
+
+// Lazy loading del visor 3D (R3F + Three.js) - F10-05
+const Viewer3D = dynamic(
+  () => import('@/components/editor/Viewer3D').then((m) => m.Viewer3D),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full flex flex-col items-center justify-center bg-slate-950 text-slate-400 gap-3">
+        <div className="w-9 h-9 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
+        <span className="text-xs font-medium">Inicializando motor Three.js 3D...</span>
+      </div>
+    )
+  }
+);
 import {
   Phase,
   ToolType,
@@ -21,7 +36,6 @@ import { ToastProvider, useToast } from '@/components/ui';
 import { sanitizeProjectName } from '@/utils/sanitize';
 import { safeSetItem, safeGetItem, onStorageError } from '@/utils/storage';
 import { validateGatcFile } from '@/lib/validators';
-import { generateProjectPDF } from '@/lib/pdf-generator';
 import { storageAdapter } from '@/lib/storage';
 import { generateId } from '@/utils/math';
 import { useEditorStore } from '@/stores/editor-store';
@@ -571,6 +585,7 @@ function EditorContent() {
         recentColors: []
       };
 
+      const { generateProjectPDF } = await import('@/lib/pdf-generator');
       const pdf = await generateProjectPDF(projectName, fullProjectState, {
         includeCivil: true,
         includeElectrical: true,

@@ -280,6 +280,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           <Tooltip key={item.id} content={item.label} shortcut={item.shortcut} position="right">
             <button
               type="button"
+              role="button"
+              tabIndex={0}
+              aria-label={item.shortcut ? `${item.label} (Tecla ${item.shortcut})` : item.label}
+              aria-pressed={isActive}
               onClick={() => {
                 if (item.isAction) {
                   onActionClick?.(item.id);
@@ -287,7 +291,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                   onSelectTool(item.id as ToolType);
                 }
               }}
-              className={`flex flex-col items-center justify-center p-2 rounded-xl text-center transition-all duration-200 min-w-[3.5rem] md:min-w-0 md:w-16 h-14 select-none ${
+              className={`flex flex-col items-center justify-center p-2 rounded-xl text-center transition-all duration-200 min-w-[3.5rem] md:min-w-0 md:w-16 h-14 select-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:outline-none ${
                 isActive
                   ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/50 shadow-inner'
                   : theme === 'dark'

@@ -1,13 +1,28 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { EngineInitializer } from '@/components/EngineInitializer';
+import { PWAStatusBanner } from '@/components/common/PWAStatusBanner';
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#4f46e5'
+};
 
 export const metadata: Metadata = {
   title: 'GATC — Gestor de Análisis para Tendidos y Costos',
   description:
     'Aplicación web CAD moderna para el diseño de instalaciones eléctricas residenciales, cálculo de BOM y documentación en PDF.',
+  manifest: '/manifest.json',
   icons: {
-    icon: '/favicon.ico'
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/icons/icon-192.svg'
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'GATC'
   }
 };
 
@@ -26,9 +41,10 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen">
+      <body className="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen selection:bg-indigo-500/30">
         <EngineInitializer />
         {children}
+        <PWAStatusBanner />
       </body>
     </html>
   );

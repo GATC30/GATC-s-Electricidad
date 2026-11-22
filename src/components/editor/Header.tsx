@@ -110,12 +110,13 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="flex items-center gap-3 min-w-0">
         <Link
           href="/"
-          className={`p-2 rounded-lg transition-colors shrink-0 ${
+          className={`p-2 rounded-lg transition-colors shrink-0 focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:outline-none ${
             theme === 'dark'
               ? 'text-slate-400 hover:text-white hover:bg-slate-800'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
           }`}
           title="Regresar a Proyectos"
+          aria-label="Regresar a la lista de proyectos"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -210,15 +211,18 @@ export const Header: React.FC<HeaderProps> = ({
         <Tooltip content={showDims ? 'Ocultar Cotas' : 'Mostrar Cotas'}>
           <button
             type="button"
+            role="button"
+            aria-pressed={showDims}
+            aria-label={showDims ? 'Ocultar Cotas' : 'Mostrar Cotas'}
             onClick={onToggleDims}
-            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:outline-none ${
               showDims
                 ? 'bg-indigo-600/20 text-indigo-300 border-indigo-500/40'
                 : 'bg-slate-800/80 text-slate-400 border-slate-700/60 hover:text-slate-200'
             }`}
           >
             <span className="hidden sm:inline">Cotas</span>
-            <span className="sm:hidden">📏</span>
+            <span className="sm:hidden" aria-hidden="true">📏</span>
           </button>
         </Tooltip>
 
@@ -226,8 +230,11 @@ export const Header: React.FC<HeaderProps> = ({
         <Tooltip content={showRulers ? 'Ocultar Reglas' : 'Mostrar Reglas'}>
           <button
             type="button"
+            role="button"
+            aria-pressed={showRulers}
+            aria-label={showRulers ? 'Ocultar Reglas' : 'Mostrar Reglas'}
             onClick={onToggleRulers}
-            className={`hidden md:inline-flex px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+            className={`hidden md:inline-flex px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:outline-none ${
               showRulers
                 ? 'bg-indigo-600/20 text-indigo-300 border-indigo-500/40'
                 : 'bg-slate-800/80 text-slate-400 border-slate-700/60 hover:text-slate-200'
@@ -240,8 +247,11 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Toggle 3D Mode */}
         <button
           type="button"
+          role="button"
+          aria-pressed={is3D}
+          aria-label={is3D ? 'Cambiar a vista de dibujo 2D' : 'Cambiar a visualizador tridimensional 3D'}
           onClick={onToggle3D}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:outline-none ${
             is3D
               ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-purple-400 shadow-md shadow-purple-900/40'
               : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'

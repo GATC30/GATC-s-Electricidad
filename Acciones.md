@@ -229,12 +229,12 @@
 
 | ID | Tarea | Prioridad | Estado |
 |------|------|------|------|
-| F10-01 | Configurar Vitest + Testing Library. Escribir tests unitarios para `src/engine/`: `geometry.test.ts` (snap, miter, intersección), `bom.test.ts` (cálculo de materiales), `catalog.test.ts` (validar catálogo completo) | 🟧 | ⬜ |
-| F10-02 | Configurar Playwright. Escribir tests E2E: crear proyecto, dibujar pared, insertar puerta, asignar dispositivo, enrutar cable, verificar presupuesto, exportar PDF | 🟧 | ⬜ |
-| F10-03 | Implementar PWA con `next-pwa` o `Serwist`: `manifest.json`, Service Worker con cache de assets, funcionalidad offline completa del editor | 🟧 | ⬜ |
-| F10-04 | Auditoría de accesibilidad: eliminar `user-scalable=no`, añadir `aria-label` a todos los botones SVG, verificar contraste WCAG AA, tab focus visible, respetar `prefers-reduced-motion` | 🟥 | ⬜ |
-| F10-05 | Optimización de rendimiento: lazy loading del visor 3D y PDF generator con `dynamic()`, code splitting por ruta, compresión de assets, análisis de bundle con `@next/bundle-analyzer` | 🟨 | ⬜ |
-| F10-06 | Testing de migración: probar con datos reales de GATC v1.5 (crear proyecto completo en v1.5, migrar a v2, verificar integridad de walls, boxes, tubes, routes, precios) | 🟧 | ⬜ |
+| F10-01 | Configurar Vitest + Testing Library. Escribir tests unitarios para `src/engine/`: `geometry.test.ts` (snap, miter, intersección), `bom.test.ts` (cálculo de materiales), `catalog.test.ts` (validar catálogo completo) | 🟧 | ✅ |
+| F10-02 | Configurar Playwright. Escribir tests E2E: crear proyecto, dibujar pared, insertar puerta, asignar dispositivo, enrutar cable, verificar presupuesto, exportar PDF | 🟧 | ✅ |
+| F10-03 | Implementar PWA con `next-pwa` o `Serwist`: `manifest.json`, Service Worker con cache de assets, funcionalidad offline completa del editor | 🟧 | ✅ |
+| F10-04 | Auditoría de accesibilidad: eliminar `user-scalable=no`, añadir `aria-label` a todos los botones SVG, verificar contraste WCAG AA, tab focus visible, respetar `prefers-reduced-motion` | 🟥 | ✅ |
+| F10-05 | Optimización de rendimiento: lazy loading del visor 3D y PDF generator con `dynamic()`, code splitting por ruta, compresión de assets, análisis de bundle con `@next/bundle-analyzer` | 🟨 | ✅ |
+| F10-06 | Testing de migración: probar con datos reales de GATC v1.5 (crear proyecto completo en v1.5, migrar a v2, verificar integridad de walls, boxes, tubes, routes, precios) | 🟧 | ✅ |
 
 **Criterio de aceptación:** Cobertura de tests ≥ 70% en módulos del engine. Tests E2E pasan en CI. Lighthouse score ≥ 90 en Performance, ≥ 95 en Accessibility. La app funciona offline. Migración de datos v1.5 → v2 sin pérdidas.
 
