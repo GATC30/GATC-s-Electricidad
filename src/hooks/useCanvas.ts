@@ -32,6 +32,8 @@ export function useCanvas(options: UseCanvasOptions = {}) {
     wireStartId,
     showDims,
     showRulers,
+    theme,
+    layers,
     setCamera,
     setZoom,
     setSelected,
@@ -91,14 +93,15 @@ export function useCanvas(options: UseCanvasOptions = {}) {
         wireRoute,
         wireStartId,
         showDims,
-        showRulers
+        showRulers,
+        layers
       };
 
       const renderOpts: RenderOptions = {
         width: cv.width,
         height: cv.height,
         isExport: false,
-        theme: options.theme || 'dark'
+        theme: options.theme || theme || 'dark'
       };
 
       render2D(ctx, projectState, editorState, renderOpts);
@@ -122,6 +125,8 @@ export function useCanvas(options: UseCanvasOptions = {}) {
     wireStartId,
     showDims,
     showRulers,
+    layers,
+    theme,
     options.theme
   ]);
 

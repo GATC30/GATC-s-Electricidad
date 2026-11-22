@@ -3,6 +3,7 @@
 import React from 'react';
 import { ToolType, Phase } from '@/engine/types';
 import { Tooltip } from '@/components/ui';
+import { useEditorStore } from '@/stores/editor-store';
 
 export interface ToolbarProps {
   activePhase: Phase;
@@ -81,6 +82,7 @@ export class ToolbarStrategy {
       {
         id: 'window',
         label: 'Ventana',
+        shortcut: 'N',
         icon: (
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm8-1v16M4 12h16" />
@@ -99,6 +101,7 @@ export class ToolbarStrategy {
       {
         id: 'box_oct',
         label: 'Caja Octag.',
+        shortcut: 'O',
         icon: (
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 3h8l5 5v8l-5 5H8l-5-5V8l5-5z" />
@@ -108,6 +111,7 @@ export class ToolbarStrategy {
       {
         id: 'box_rect',
         label: 'Caja Rect.',
+        shortcut: 'R',
         icon: (
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <rect x="5" y="7" width="14" height="10" rx="1.5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -117,6 +121,7 @@ export class ToolbarStrategy {
       {
         id: 'box_sq',
         label: 'Caja Cuadr.',
+        shortcut: 'Q',
         icon: (
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <rect x="5" y="5" width="14" height="14" rx="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -171,7 +176,7 @@ export class ToolbarStrategy {
       {
         id: 'wire',
         label: 'Enrutar Cable',
-        shortcut: 'C',
+        shortcut: 'E',
         icon: (
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -258,12 +263,15 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onSelectTool,
   onActionClick
 }) => {
+  const { theme } = useEditorStore();
   const tools = ToolbarStrategy.getToolsForPhase(activePhase);
 
   return (
     <aside
       aria-label="Barra de herramientas"
-      className="bg-slate-900 border-t md:border-t-0 md:border-r border-slate-800 z-20 flex md:flex-col items-center justify-start py-1.5 md:py-3 px-2 md:px-1.5 gap-1.5 overflow-x-auto md:overflow-y-auto w-full md:w-20 shrink-0"
+      className={`border-t md:border-t-0 md:border-r z-20 flex md:flex-col items-center justify-start py-1.5 md:py-3 px-2 md:px-1.5 gap-1.5 overflow-x-auto md:overflow-y-auto w-full md:w-20 shrink-0 transition-colors duration-200 ${
+        theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-slate-100 border-slate-300'
+      }`}
     >
       {tools.map((item) => {
         const isActive = !item.isAction && activeTool === item.id;
@@ -281,8 +289,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               }}
               className={`flex flex-col items-center justify-center p-2 rounded-xl text-center transition-all duration-200 min-w-[3.5rem] md:min-w-0 md:w-16 h-14 select-none ${
                 isActive
-                  ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/50 shadow-inner'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 border border-transparent'
+                  ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/50 shadow-inner'
+                  : theme === 'dark'
+                    ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 border border-transparent'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200 border border-transparent'
               }`}
             >
               <div className={`${isActive ? 'text-indigo-400' : 'text-slate-400'} mb-1`}>

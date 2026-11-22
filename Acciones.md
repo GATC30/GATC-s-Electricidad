@@ -190,15 +190,15 @@
 
 | ID | Tarea | Prioridad | Estado |
 |------|------|------|------|
-| F8-01 | Crear `src/hooks/useKeyboard.ts` — Atajos de teclado: `V` (seleccionar), `W` (pared), `D` (puerta), `Ctrl+Z` (undo), `Del` (eliminar), `1-4` (fases), `Space+drag` (pan temporal), `Esc` (cancelar). Mostrar shortcut en tooltip de cada herramienta | 🟧 | ⬜ |
-| F8-02 | Crear componente `StatusBar.tsx` — Barra inferior con: estado de guardado, zoom con +/−/fit, escala, coordenadas del cursor en metros, herramienta activa, nivel actual | 🟨 | ⬜ |
-| F8-03 | Crear componente `Minimap.tsx` — Mini-mapa en esquina del canvas: vista miniatura del plano completo, rectángulo de viewport, click para navegar | 🟨 | ⬜ |
-| F8-04 | Crear componente `CommandPalette.tsx` — Paleta de comandos activada con `Ctrl+K`: búsqueda de acciones (cambiar herramienta, ir a fase, exportar, zoom to fit, etc.) | 🟩 | ⬜ |
-| F8-05 | Crear componente `OnboardingTour.tsx` — Tour de primera vez (5 pasos): bienvenida, herramientas, fases, 3D, exportar. Se muestra solo una vez (flag en localStorage). Botón "Skip" | 🟩 | ⬜ |
-| F8-06 | Implementar copiar/pegar elementos: `Ctrl+C` copia selección al clipboard interno, `Ctrl+V` pega en posición del cursor con offset de 20px. Soportar paredes, cajas y grupos | 🟨 | ⬜ |
-| F8-07 | Implementar `zoomToFit()` — Calcular bounding box de todos los elementos del nivel activo y ajustar camX, camY y zoom para que todo el plano sea visible. Atajo `Ctrl+0` | 🟧 | ⬜ |
-| F8-08 | Implementar modo oscuro en el editor — Toggle light/dark que cambia fondo del canvas, colores de paredes, panel de propiedades y toolbar. Respetar `prefers-color-scheme` del sistema | 🟩 | ⬜ |
-| F8-09 | Implementar capas 2D togglables — Checkboxes para mostrar/ocultar tipos de elementos en el canvas (paredes, puertas/ventanas, cajas, tuberías, cotas, etiquetas) | 🟨 | ⬜ |
+| F8-01 | Crear `src/hooks/useKeyboard.ts` — Atajos de teclado: `V` (seleccionar), `W` (pared), `D` (puerta), `Ctrl+Z` (undo), `Del` (eliminar), `1-4` (fases), `Space+drag` (pan temporal), `Esc` (cancelar). Mostrar shortcut en tooltip de cada herramienta | 🟧 | ✅ |
+| F8-02 | Crear componente `StatusBar.tsx` — Barra inferior con: estado de guardado, zoom con +/−/fit, escala, coordenadas del cursor en metros, herramienta activa, nivel actual | 🟨 | ✅ |
+| F8-03 | Crear componente `Minimap.tsx` — Mini-mapa en esquina del canvas: vista miniatura del plano completo, rectángulo de viewport, click para navegar | 🟨 | ✅ |
+| F8-04 | Crear componente `CommandPalette.tsx` — Paleta de comandos activada con `Ctrl+K`: búsqueda de acciones (cambiar herramienta, ir a fase, exportar, zoom to fit, etc.) | 🟩 | ✅ |
+| F8-05 | Crear componente `OnboardingTour.tsx` — Tour de primera vez (5 pasos): bienvenida, herramientas, fases, 3D, exportar. Se muestra solo una vez (flag en localStorage). Botón "Skip" | 🟩 | ✅ |
+| F8-06 | Implementar copiar/pegar elementos: `Ctrl+C` copia selección al clipboard interno, `Ctrl+V` pega en posición del cursor con offset de 20px. Soportar paredes, cajas y grupos | 🟨 | ✅ |
+| F8-07 | Implementar `zoomToFit()` — Calcular bounding box de todos los elementos del nivel activo y ajustar camX, camY y zoom para que todo el plano sea visible. Atajo `Ctrl+0` | 🟧 | ✅ |
+| F8-08 | Implementar modo oscuro en el editor — Toggle light/dark que cambia fondo del canvas, colores de paredes, panel de propiedades y toolbar. Respetar `prefers-color-scheme` del sistema | 🟩 | ✅ |
+| F8-09 | Implementar capas 2D togglables — Checkboxes para mostrar/ocultar tipos de elementos en el canvas (paredes, puertas/ventanas, cajas, tuberías, cotas, etiquetas) | 🟨 | ✅ |
 
 **Criterio de aceptación:** Los atajos de teclado funcionan correctamente sin interferir entre sí. La status bar muestra información en tiempo real. El tour se muestra solo la primera vez. Zoom to fit centra correctamente el plano.
 

@@ -5,6 +5,7 @@ import { Wall, Box, Tube, Route, ProjectConfig, DeviceKey, Phase } from '@/engin
 import { CATALOG } from '@/engine/catalog';
 import { Button } from '@/components/ui';
 import { sanitizeLabel } from '@/utils/sanitize';
+import { useEditorStore } from '@/stores/editor-store';
 
 export interface PropertiesPanelProps {
   selectedElement: {
@@ -48,13 +49,16 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   onZoomToFit
 }) => {
   const [isMobileExpanded, setIsMobileExpanded] = useState(false);
+  const { theme } = useEditorStore();
 
   const { type, element } = selectedElement;
 
   return (
     <aside
       aria-label="Panel de propiedades"
-      className={`bg-slate-900 border-l border-slate-800 z-20 flex flex-col transition-all duration-300 md:w-80 shrink-0 ${
+      className={`border-l z-20 flex flex-col transition-all duration-300 md:w-80 shrink-0 ${
+        theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-slate-100 border-slate-300'
+      } ${
         isMobileExpanded
           ? 'fixed inset-x-0 bottom-0 top-1/3 md:static md:inset-auto md:top-auto shadow-2xl md:shadow-none'
           : 'fixed inset-x-0 bottom-0 h-12 md:static md:inset-auto md:h-auto'

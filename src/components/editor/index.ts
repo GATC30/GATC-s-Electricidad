@@ -5,3 +5,7 @@ export * from './Toolbar';
 export * from './PropertiesPanel';
 export * from './Canvas2D';
 export * from './Viewer3D';
+export * from './StatusBar';
+export * from './Minimap';
+export * from './CommandPalette';
+export * from './OnboardingTour';

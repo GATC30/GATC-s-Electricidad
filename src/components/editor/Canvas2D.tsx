@@ -42,19 +42,21 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({
   onOpenWireModal,
   onToast
 }) => {
+  const { theme, tool, zoom, cursorCoords } = useEditorStore();
+
   const { containerRef, canvasRef, events } = useCanvas({
-    theme: 'dark',
+    theme,
     onSaveState,
     onOpenWireModal,
     onToast
   });
 
-  const { tool, zoom, cursorCoords } = useEditorStore();
-
   return (
     <div
       ref={containerRef}
-      className="relative flex-1 h-full w-full bg-[#080b12] overflow-hidden select-none outline-none touch-none"
+      className={`relative flex-1 h-full w-full overflow-hidden select-none outline-none touch-none transition-colors duration-200 ${
+        theme === 'dark' ? 'bg-[#080b12]' : 'bg-[#f8fafc]'
+      }`}
     >
       {/* CAD Canvas Engine */}
       <canvas

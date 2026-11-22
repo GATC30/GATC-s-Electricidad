@@ -2,7 +2,7 @@
 
 import React, { useEffect, useCallback, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Header, PhaseTabs, Toolbar, PropertiesPanel, Canvas2D, Viewer3D } from '@/components/editor';
+import { Header, PhaseTabs, Toolbar, PropertiesPanel, Canvas2D, Viewer3D, StatusBar, Minimap, CommandPalette, OnboardingTour } from '@/components/editor';
 import { QuoteView, MemoryView } from '@/components/phases';
 import { WireRouteModal, PricesModal, ExportModal } from '@/components/modals';
 import {
@@ -29,6 +29,7 @@ import { useProjectStore, ProjectSnapshot } from '@/stores/project-store';
 import { usePricesStore } from '@/stores/prices-store';
 import { useHistory } from '@/hooks/useHistory';
 import { useAutoSave } from '@/hooks/useAutoSave';
+import { useKeyboard } from '@/hooks/useKeyboard';
 
 function EditorContent() {
   const params = useParams();
@@ -56,6 +57,10 @@ function EditorContent() {
     selectedId,
     selectedType,
     wireRoute,
+    theme,
+    clipboard,
+    isCommandPaletteOpen,
+    isOnboardingOpen,
     setTool: setActiveTool,
     setPhase: setActivePhase,
     setCurrentLevel,
@@ -66,7 +71,11 @@ function EditorContent() {
     setSelected,
     clearSelection,
     setWireRoute,
-    setWireStartId
+    setWireStartId,
+    setClipboard,
+    zoomToFit,
+    setIsCommandPaletteOpen,
+    setIsOnboardingOpen
   } = useEditorStore();
 
   // Project Store
@@ -252,26 +261,184 @@ function EditorContent() {
     };
   }, [projectId, initProject, setActivePhase, setCurrentLevel, clearHistory, getSnapshot]);
 
-  // Keyboard shortcuts (Ctrl+Z for Undo, Ctrl+Y for Redo)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-        if (e.shiftKey) {
-          e.preventDefault();
-          if (canRedo) redo();
-        } else {
-          e.preventDefault();
-          if (canUndo) undo();
-        }
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
-        e.preventDefault();
-        if (canRedo) redo();
-      }
-    };
+  // Zoom to Fit (F8-07)
+  const handleZoomToFit = useCallback(() => {
+    const lvlWalls = walls.filter((w) => w.lvl === currentLevel);
+    const lvlBoxes = boxes.filter((b) => b.lvl === currentLevel);
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [canUndo, canRedo, undo, redo]);
+    if (lvlWalls.length === 0 && lvlBoxes.length === 0) {
+      addToast({
+        title: 'Zoom to Fit',
+        message: 'No hay elementos en este nivel para ajustar.',
+        type: 'info'
+      });
+      return;
+    }
+
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+
+    lvlWalls.forEach((w) => {
+      minX = Math.min(minX, w.x1, w.x2);
+      maxX = Math.max(maxX, w.x1, w.x2);
+      minY = Math.min(minY, w.y1, w.y2);
+      maxY = Math.max(maxY, w.y1, w.y2);
+    });
+
+    lvlBoxes.forEach((b) => {
+      minX = Math.min(minX, b.x - 30);
+      maxX = Math.max(maxX, b.x + 30);
+      minY = Math.min(minY, b.y - 30);
+      maxY = Math.max(maxY, b.y + 30);
+    });
+
+    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth - 380 : 1000;
+    const viewportHeight = typeof window !== 'undefined' ? window.innerHeight - 150 : 700;
+
+    zoomToFit({ minX, maxX, minY, maxY }, viewportWidth, viewportHeight);
+    addToast({
+      title: 'Vista Ajustada',
+      message: 'El plano se centró en la pantalla.',
+      type: 'success'
+    });
+  }, [walls, boxes, currentLevel, zoomToFit, addToast]);
+
+  // Copy / Paste Handlers (F8-06)
+  const handleCopy = useCallback(() => {
+    if (!selectedId || !selectedType) {
+      addToast({
+        title: 'Copiar',
+        message: 'Selecciona una pared o caja para copiar.',
+        type: 'info'
+      });
+      return;
+    }
+
+    if (selectedType === 'wall') {
+      const w = walls.find((item) => item.id === selectedId);
+      if (w) {
+        setClipboard({ type: 'wall', data: JSON.parse(JSON.stringify(w)) });
+        addToast({
+          title: 'Copiado',
+          message: 'Pared copiada al portapapeles.',
+          type: 'success'
+        });
+      }
+    } else if (selectedType === 'box') {
+      const b = boxes.find((item) => item.id === selectedId);
+      if (b) {
+        setClipboard({ type: 'box', data: JSON.parse(JSON.stringify(b)) });
+        addToast({
+          title: 'Copiado',
+          message: `Caja (${b.type}) copiada al portapapeles.`,
+          type: 'success'
+        });
+      }
+    }
+  }, [selectedId, selectedType, walls, boxes, setClipboard, addToast]);
+
+  const handlePaste = useCallback(() => {
+    if (!clipboard) {
+      addToast({
+        title: 'Pegar',
+        message: 'El portapapeles interno está vacío.',
+        type: 'warning'
+      });
+      return;
+    }
+
+    const offset = 20; // 20px offset in CAD space
+
+    if (clipboard.type === 'wall') {
+      const original: Wall = clipboard.data;
+      const newId = generateId();
+      const newWall: Wall = {
+        ...original,
+        id: newId,
+        x1: original.x1 + offset,
+        y1: original.y1 + offset,
+        x2: original.x2 + offset,
+        y2: original.y2 + offset,
+        lvl: currentLevel
+      };
+      addWall(newWall);
+      setSelected('wall', newId);
+      recordChange();
+      addToast({
+        title: 'Pegado',
+        message: 'Pared pegada con éxito.',
+        type: 'success'
+      });
+    } else if (clipboard.type === 'box') {
+      const original: Box = clipboard.data;
+      const newId = generateId();
+      const newBox: Box = {
+        ...original,
+        id: newId,
+        x: original.x + offset,
+        y: original.y + offset,
+        lvl: currentLevel
+      };
+      addBox(newBox);
+      setSelected('box', newId);
+      recordChange();
+      addToast({
+        title: 'Pegado',
+        message: 'Caja pegada con éxito.',
+        type: 'success'
+      });
+    }
+  }, [clipboard, currentLevel, addWall, addBox, setSelected, recordChange, addToast]);
+
+  // Delete element handler
+  const handleDeleteSelected = useCallback(() => {
+    if (selectedId && selectedType) {
+      deleteElement(selectedType, selectedId, activePhase);
+      clearSelection();
+      recordChange();
+      addToast({
+        title: 'Elemento Eliminado',
+        message: 'Se ha eliminado el elemento seleccionado.',
+        type: 'info'
+      });
+    }
+  }, [selectedId, selectedType, deleteElement, activePhase, clearSelection, recordChange, addToast]);
+
+  // Comprehensive Keyboard Shortcuts (F8-01)
+  useKeyboard({
+    onUndo: () => {
+      if (canUndo) undo();
+    },
+    onRedo: () => {
+      if (canRedo) redo();
+    },
+    onSave: () => {
+      forceSave();
+      addToast({
+        title: 'Guardado',
+        message: 'Proyecto guardado correctamente.',
+        type: 'success'
+      });
+    },
+    onDeleteSelected: handleDeleteSelected,
+    onCopy: handleCopy,
+    onPaste: handlePaste,
+    onZoomToFit: handleZoomToFit,
+    onOpenCommandPalette: () => setIsCommandPaletteOpen(true),
+    onToast: (msg, type) => addToast({ title: 'Atajo', message: msg, type: type || 'info' })
+  });
+
+  // Onboarding Tour first-time auto-trigger (F8-05)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const completed = localStorage.getItem('gatc_onboarding_completed');
+      if (!completed) {
+        setIsOnboardingOpen(true);
+      }
+    }
+  }, [setIsOnboardingOpen]);
 
   // Handle Project Name Change (BUG-01 sanitization)
   const handleProjectNameChange = (newName: string) => {
@@ -552,7 +719,11 @@ function EditorContent() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-slate-950 text-slate-100 overflow-hidden select-none">
+    <div
+      className={`flex flex-col h-screen w-screen overflow-hidden select-none transition-colors duration-200 ${
+        theme === 'dark' ? 'bg-[#080b12] text-slate-100' : 'bg-[#f8fafc] text-slate-800'
+      }`}
+    >
       {/* 1. Header Navigation Bar */}
       <Header
         projectName={projectName}
@@ -578,7 +749,11 @@ function EditorContent() {
       />
 
       {/* 2. Phase Navigation Bar */}
-      <div className="bg-slate-900/60 border-b border-slate-800/80 px-4 py-2 flex items-center justify-between">
+      <div
+        className={`px-4 py-2 flex items-center justify-between border-b transition-colors duration-200 ${
+          theme === 'dark' ? 'bg-slate-900/60 border-slate-800/80' : 'bg-slate-100/90 border-slate-300'
+        }`}
+      >
         <PhaseTabs
           activePhase={activePhase}
           onChangePhase={(ph) => {
@@ -591,7 +766,11 @@ function EditorContent() {
         <div className="hidden sm:flex items-center gap-3 text-xs text-slate-400">
           <button
             onClick={openPricesModal}
-            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
+            className={`px-2.5 py-1 rounded-lg font-medium transition-colors flex items-center gap-1.5 cursor-pointer ${
+              theme === 'dark'
+                ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
+                : 'bg-slate-200 hover:bg-slate-300 text-slate-700 border border-slate-300'
+            }`}
             title="Configurar precios globales de materiales"
           >
             <svg className="w-3.5 h-3.5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -602,7 +781,7 @@ function EditorContent() {
 
           <button
             onClick={() => setIsExportModalOpen(true)}
-            className="px-2.5 py-1 bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40 rounded-lg font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
+            className="px-2.5 py-1 bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-400 border border-indigo-500/40 rounded-lg font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
             title="Abrir menú de exportación (PDF / .gatc)"
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -610,7 +789,11 @@ function EditorContent() {
             </svg>
             Exportar
           </button>
-          <span className="font-mono bg-slate-800 px-2 py-0.5 rounded text-[11px]">
+          <span
+            className={`font-mono px-2 py-0.5 rounded text-[11px] ${
+              theme === 'dark' ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
+            }`}
+          >
             Escala: 40px = 1m
           </span>
         </div>
@@ -660,6 +843,9 @@ function EditorContent() {
                 onOpenWireModal={(routeId) => handleOpenWireModal(routeId, null)}
                 onToast={(msg) => addToast({ title: 'Aviso CAD', message: msg, type: 'info' })}
               />
+
+              {/* Minimap (F8-03) */}
+              <Minimap />
             </div>
 
             {/* Right Properties Panel */}
@@ -674,6 +860,7 @@ function EditorContent() {
               }}
               routes={routes}
               activePhase={activePhase}
+              onZoomToFit={handleZoomToFit}
               onUpdateWall={(id, updates) => {
                 const wall = walls.find((w) => w.id === id);
                 if (wall) {
@@ -718,7 +905,7 @@ function EditorContent() {
           </>
         ) : activePhase === 3 ? (
           /* Phase 3: Cotización / Presupuesto */
-          <div className="flex-1 overflow-y-auto h-full bg-[#080b12]">
+          <div className={`flex-1 overflow-y-auto h-full ${theme === 'dark' ? 'bg-[#080b12]' : 'bg-[#f8fafc]'}`}>
             <QuoteView
               state={fullProjectState}
               onUpdateOverrides={(key, val) => {
@@ -742,11 +929,18 @@ function EditorContent() {
           </div>
         ) : (
           /* Phase 4: Memoria Descriptiva */
-          <div className="flex-1 overflow-y-auto h-full bg-[#080b12]">
+          <div className={`flex-1 overflow-y-auto h-full ${theme === 'dark' ? 'bg-[#080b12]' : 'bg-[#f8fafc]'}`}>
             <MemoryView state={fullProjectState} />
           </div>
         )}
       </div>
+
+      {/* Bottom Status Bar (F8-02) */}
+      <StatusBar
+        saveStatus={autoSaveStatus}
+        onZoomToFit={handleZoomToFit}
+        onOpenTour={() => setIsOnboardingOpen(true)}
+      />
 
       {/* Wire Route Modal (F5-02) */}
       <WireRouteModal
@@ -783,6 +977,29 @@ function EditorContent() {
             type: type || 'info'
           })
         }
+      />
+
+      {/* Command Palette Modal (F8-04) */}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        onSave={() => forceSave()}
+        onZoomToFit={handleZoomToFit}
+        onExport={() => setIsExportModalOpen(true)}
+        onOpenGlobalPrices={openPricesModal}
+        onOpenTour={() => setIsOnboardingOpen(true)}
+        onCopy={handleCopy}
+        onPaste={handlePaste}
+        onDeleteSelected={handleDeleteSelected}
+        onUndo={undo}
+        onRedo={redo}
+        onAddLevel={handleAddLevel}
+      />
+
+      {/* Onboarding Tour Modal (F8-05) */}
+      <OnboardingTour
+        isOpen={isOnboardingOpen}
+        onClose={() => setIsOnboardingOpen(false)}
       />
     </div>
   );

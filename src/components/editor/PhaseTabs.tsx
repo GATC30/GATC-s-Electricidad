@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Phase } from '@/engine/types';
+import { useEditorStore } from '@/stores/editor-store';
 
 export interface PhaseTabsProps {
   activePhase: Phase;
@@ -14,6 +15,7 @@ export const PhaseTabs: React.FC<PhaseTabsProps> = ({
   onChangePhase,
   className = ''
 }) => {
+  const { theme } = useEditorStore();
   const phases: { id: Phase; label: string; badge: string; icon: React.ReactNode }[] = [
     {
       id: 1,
@@ -60,7 +62,11 @@ export const PhaseTabs: React.FC<PhaseTabsProps> = ({
   return (
     <nav
       aria-label="Fases del Proyecto"
-      className={`flex items-center gap-1.5 p-1 bg-slate-900/90 rounded-xl border border-slate-800 overflow-x-auto no-scrollbar ${className}`}
+      className={`flex items-center gap-1.5 p-1 rounded-xl border overflow-x-auto no-scrollbar transition-colors duration-200 ${
+        theme === 'dark'
+          ? 'bg-slate-900/90 border-slate-800'
+          : 'bg-slate-200/90 border-slate-300'
+      } ${className}`}
     >
       {phases.map((ph) => {
         const isActive = activePhase === ph.id;
@@ -72,7 +78,9 @@ export const PhaseTabs: React.FC<PhaseTabsProps> = ({
             className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all duration-200 select-none ${
               isActive
                 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-900/40'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                : theme === 'dark'
+                  ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-300/60'
             }`}
           >
             <span className={isActive ? 'text-white' : 'text-slate-400'}>{ph.icon}</span>

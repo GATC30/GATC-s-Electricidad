@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { LevelSelector } from './LevelSelector';
 import { Button, Tooltip } from '@/components/ui';
+import { useEditorStore } from '@/stores/editor-store';
 
 export interface HeaderProps {
   projectName: string;
@@ -50,6 +51,7 @@ export const Header: React.FC<HeaderProps> = ({
   isSaved = true,
   saveStatus
 }) => {
+  const { theme } = useEditorStore();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [title, setTitle] = useState(projectName);
 
@@ -99,12 +101,20 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="h-14 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-3 sm:px-4 z-30 select-none">
+    <header
+      className={`h-14 border-b flex items-center justify-between px-3 sm:px-4 z-30 select-none transition-colors duration-200 ${
+        theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-slate-100 border-slate-300'
+      }`}
+    >
       {/* Left: Back button & Editable Project Name */}
       <div className="flex items-center gap-3 min-w-0">
         <Link
           href="/"
-          className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors shrink-0"
+          className={`p-2 rounded-lg transition-colors shrink-0 ${
+            theme === 'dark'
+              ? 'text-slate-400 hover:text-white hover:bg-slate-800'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+          }`}
           title="Regresar a Proyectos"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
