@@ -1,26 +1,46 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { ProjectGrid } from '@/components/projects';
 import { ProjectSummary } from '@/components/projects/ProjectCard';
 import { ConfirmDialog } from '@/components/ui';
+import { MigrationModal } from '@/components/modals';
 import { sanitizeProjectName } from '@/utils/sanitize';
 import { safeSetItem, safeGetItem, safeRemoveItem } from '@/utils/storage';
 import { validateGatcFile } from '@/lib/validators';
 import { exportProject } from '@/lib/export';
 import { storageAdapter, SyncStatus } from '@/lib/storage';
+import { detectLegacyData, LegacyDetectionResult, MigrationResult } from '@/lib/migration';
 
 export default function HomePage() {
   const router = useRouter();
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [mousePos, setMousePos] = useState({ x: '50vw', y: '50vh' });
+  const [legacyDetection, setLegacyDetection] = useState<LegacyDetectionResult | null>(null);
+  const [isMigrationModalOpen, setIsMigrationModalOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Load projects from localStorage (and populate demo projects if empty)
-  useEffect(() => {
+  // Load projects from storage (IndexedDB / localStorage)
+  const refreshProjects = useCallback(async () => {
     try {
+      // First try to load from storage adapter
+      const adapterList = await storageAdapter.listProjects();
+      if (adapterList && adapterList.length > 0) {
+        const summaries: ProjectSummary[] = adapterList.map((p) => ({
+          id: p.id,
+          name: sanitizeProjectName(p.name || 'Proyecto GATC'),
+          updated: p.updated || Date.now(),
+          wallsCount: Array.isArray(p.state?.walls) ? p.state.walls.length : 0,
+          boxesCount: Array.isArray(p.state?.boxes) ? p.state.boxes.length : 0,
+          circuitsCount: Array.isArray(p.state?.routes) ? p.state.routes.length : 0
+        }));
+        setProjects(summaries);
+        return;
+      }
+
+      // Fallback to ecad_projects_index
       const storedIndex = safeGetItem<any[]>('ecad_projects_index', []);
       if (Array.isArray(storedIndex) && storedIndex.length > 0) {
         const list: ProjectSummary[] = storedIndex.map((item: any) => {
@@ -71,6 +91,19 @@ export default function HomePage() {
       console.error('Error loading projects from storage:', e);
     }
   }, []);
+
+  // Check legacy v1.5 data on initial mount (F9-02)
+  useEffect(() => {
+    refreshProjects();
+
+    const detection = detectLegacyData();
+    setLegacyDetection(detection);
+
+    // Auto-prompt modal if legacy data exists and has not been migrated or dismissed
+    if (detection.hasLegacyData && !detection.isMigrated && !detection.isDismissed) {
+      setIsMigrationModalOpen(true);
+    }
+  }, [refreshProjects]);
 
   // Lantern flashlight effect tracking mouse
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -162,7 +195,7 @@ export default function HomePage() {
         return;
       }
 
-      // Schema validation and sanitization (BUG-10 & BUG-01)
+      // Schema validation and sanitization (BUG-10, BUG-01, F9-04)
       const validation = validateGatcFile(parsed);
       if (!validation.isValid && validation.errors.length > 0) {
         alert(`Error validando archivo .gatc:\n${validation.errors.slice(0, 3).join('\n')}`);
@@ -187,6 +220,11 @@ export default function HomePage() {
       safeSetItem('ecad_projects_index', updated);
       if (validation.sanitizedState) {
         safeSetItem(`ecad_data_${importedId}`, validation.sanitizedState);
+        storageAdapter.saveProject(importedId, importedName, validation.sanitizedState);
+      }
+
+      if (validation.wasMigrated) {
+        console.info(`[Import] Archivo migrado automáticamente desde v${validation.detectedVersion || '1.5'} a v2.0`);
       }
 
       router.push(`/editor/${importedId}`);
@@ -212,7 +250,7 @@ export default function HomePage() {
 
       <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-16">
         {/* Hero Section */}
-        <div className="flex flex-col items-center text-center mb-12 md:mb-16">
+        <div className="flex flex-col items-center text-center mb-10 md:mb-12">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-4 shadow-sm">
             <span>⚡ CAD Eléctrico & Obra Civil</span>
             <span className="w-1 h-1 rounded-full bg-indigo-400" />
@@ -226,10 +264,38 @@ export default function HomePage() {
             </span>
           </h1>
 
-          <p className="max-w-2xl text-slate-400 text-sm sm:text-base leading-relaxed">
+          <p className="max-w-2xl text-slate-400 text-sm sm:text-base leading-relaxed mb-6">
             Plataforma profesional para diseño de instalaciones eléctricas residenciales, cálculo de
             BOM en tiempo real y generación automática de presupuestos y memorias descriptivas.
           </p>
+
+          {/* Legacy Migration Banner (F9-02) */}
+          {legacyDetection?.hasLegacyData && !legacyDetection?.isMigrated && (
+            <div className="flex items-center justify-between gap-4 p-3.5 sm:p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-sm max-w-xl w-full backdrop-blur-sm shadow-lg text-left">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="font-bold text-white text-xs sm:text-sm">
+                    {legacyDetection.projectCount} {legacyDetection.projectCount === 1 ? 'proyecto' : 'proyectos'} de GATC v1.5 detectados
+                  </p>
+                  <p className="text-[11px] sm:text-xs text-slate-400">
+                    Puedes importarlos al nuevo formato v2 sin perder datos ni configuraciones.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMigrationModalOpen(true)}
+                className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs whitespace-nowrap transition-colors shadow"
+              >
+                Migrar
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Project Grid with Import, Rename, Delete */}
@@ -254,6 +320,19 @@ export default function HomePage() {
         variant="danger"
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeleteId(null)}
+      />
+
+      {/* Legacy Migration Modal (F9-02) */}
+      <MigrationModal
+        isOpen={isMigrationModalOpen}
+        onClose={() => setIsMigrationModalOpen(false)}
+        detection={legacyDetection}
+        onMigrated={(res) => {
+          if (res.success) {
+            refreshProjects();
+            setLegacyDetection(detectLegacyData());
+          }
+        }}
       />
     </div>
   );

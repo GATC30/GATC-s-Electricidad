@@ -212,10 +212,10 @@
 
 | ID | Tarea | Prioridad | Estado |
 |------|------|------|------|
-| F9-01 | Crear `src/lib/migration.ts` — Migrador de datos v1.5 → v2: leer `ecad_projects_index`, `ecad_data_*` y `ecad_global_prices` de localStorage, transformar al nuevo esquema TypeScript, importar a IndexedDB/API | 🟥 | ⬜ |
-| F9-02 | Implementar detector automático de datos legacy — Al abrir la app, verificar si existen claves `ecad_*` en localStorage. Si existen, mostrar modal de migración con opción de importar o ignorar | 🟧 | ⬜ |
-| F9-03 | Crear `src/lib/schema-version.ts` — Versionado de esquema de datos con número de versión en cada proyecto guardado. Sistema de migraciones incrementales (v1 → v2 → v3...) para futuros cambios de estructura | 🟧 | ⬜ |
-| F9-04 | Implementar importación de archivos `.gatc` legacy — Aceptar tanto el formato v1.5 (actual) como el nuevo formato v2, detectando automáticamente la versión | 🟨 | ⬜ |
+| F9-01 | Crear `src/lib/migration.ts` — Migrador de datos v1.5 → v2: leer `ecad_projects_index`, `ecad_data_*` y `ecad_global_prices` de localStorage, transformar al nuevo esquema TypeScript, importar a IndexedDB/API | 🟥 | ✅ |
+| F9-02 | Implementar detector automático de datos legacy — Al abrir la app, verificar si existen claves `ecad_*` en localStorage. Si existen, mostrar modal de migración con opción de importar o ignorar | 🟧 | ✅ |
+| F9-03 | Crear `src/lib/schema-version.ts` — Versionado de esquema de datos con número de versión en cada proyecto guardado. Sistema de migraciones incrementales (v1 → v2 → v3...) para futuros cambios de estructura | 🟧 | ✅ |
+| F9-04 | Implementar importación de archivos `.gatc` legacy — Aceptar tanto el formato v1.5 (actual) como el nuevo formato v2, detectando automáticamente la versión | 🟨 | ✅ |
 
 **Criterio de aceptación:** Un usuario que tiene proyectos en GATC v1.5 (localStorage) puede abrir la nueva app y migrar todos sus proyectos con un click. Los datos migrados son 100% funcionales en el nuevo editor.
 

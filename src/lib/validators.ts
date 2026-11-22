@@ -18,6 +18,7 @@ import {
 import { DEFAULT_WALL_WIDTH, DEFAULT_WALL_HEIGHT } from '../engine/constants';
 import { sanitizeProjectName, sanitizeLabel, sanitizeText } from '../utils/sanitize';
 import { generateId } from '../utils/math';
+import { detectSchemaVersion, migrateProjectState } from './schema-version';
 
 export interface ValidationResult {
   isValid: boolean;
@@ -26,6 +27,8 @@ export interface ValidationResult {
   sanitizedState?: ProjectState;
   projectId?: string;
   projectName?: string;
+  detectedVersion?: '1.5' | '2.0';
+  wasMigrated?: boolean;
 }
 
 const VALID_BOX_TYPES: Set<string> = new Set([
@@ -218,15 +221,26 @@ export function validateGatcFile(raw: unknown): ValidationResult {
     };
   }
 
-  const data = raw as Record<string, unknown>;
+  // Detect schema version and run migrations (F9-03, F9-04)
+  const schemaVer = detectSchemaVersion(raw);
+  const detectedVersion: '1.5' | '2.0' = schemaVer === 1 ? '1.5' : '2.0';
+  const { state: migratedState, report } = migrateProjectState(raw);
+
+  if (report.warnings.length > 0) {
+    warnings.push(...report.warnings);
+  }
+
+  const rawObj = raw as Record<string, unknown>;
 
   // 1. Project ID & Name
-  const projectId = isString(data.id) && data.id.trim()
-    ? data.id.trim()
+  const projectId = isString(rawObj.id) && rawObj.id.trim()
+    ? rawObj.id.trim()
     : generateId('proj');
 
-  const rawName = data.name || (data as any).projectName || 'Proyecto Importado';
+  const rawName = rawObj.name || (rawObj as any).projectName || (rawObj.state as any)?.name || 'Proyecto Importado';
   const projectName = sanitizeProjectName(rawName);
+
+  const data = migratedState as unknown as Record<string, unknown>;
 
   // 2. Levels
   let levels: number[] = [1];
@@ -324,7 +338,7 @@ export function validateGatcFile(raw: unknown): ValidationResult {
   }
 
   const sanitizedState: ProjectState = {
-    phase: 1,
+    phase: isNumber(data.phase) && data.phase >= 1 && data.phase <= 4 ? data.phase : 1,
     lvlId: currentLevel,
     levels,
     is3D: false,
@@ -345,7 +359,6 @@ export function validateGatcFile(raw: unknown): ValidationResult {
   };
 
   // Determine if valid: file must be structurally recognizable
-  // Even if some elements had minor errors, if we salvaged valid structure, it can be imported with warnings
   const isValid = errors.length === 0;
 
   return {
@@ -354,6 +367,10 @@ export function validateGatcFile(raw: unknown): ValidationResult {
     warnings,
     sanitizedState,
     projectId,
-    projectName
+    projectName,
+    detectedVersion,
+    wasMigrated: report.migrated
+  };
+}
   };
 }

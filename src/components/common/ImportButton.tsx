@@ -9,6 +9,8 @@ export interface ImportResult {
   projectId: string;
   projectName: string;
   state: ProjectState;
+  detectedVersion?: '1.5' | '2.0';
+  wasMigrated?: boolean;
 }
 
 export interface ImportButtonProps {
@@ -73,7 +75,9 @@ export const ImportButton: React.FC<ImportButtonProps> = ({
         onImport({
           projectId,
           projectName: rawProjectName,
-          state: validation.sanitizedState
+          state: validation.sanitizedState,
+          detectedVersion: validation.detectedVersion,
+          wasMigrated: validation.wasMigrated
         });
       } else {
         onError?.('No se pudieron extraer datos válidos del proyecto.');
