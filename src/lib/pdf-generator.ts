@@ -89,7 +89,9 @@ export class PDFGenerator {
         angle: 45
       });
       this.doc.restoreGraphicsState();
-    } catch (_) {}
+    } catch (err) {
+      console.warn('Graphics state restore failed:', err);
+    }
 
     // Footer divider line
     this.doc.setDrawColor(226, 232, 240);
@@ -697,7 +699,9 @@ export class PDFGenerator {
         try {
           const symImgData = symCv.toDataURL('image/png');
           this.doc.addImage(symImgData, 'PNG', curX + 2, yPos - 6, 12, 12, undefined, 'FAST');
-        } catch (_) {}
+        } catch (err) {
+          console.warn('Failed to add symbol image to PDF:', err);
+        }
       }
 
       // Device Text & Height

@@ -236,7 +236,9 @@ export const useEditorStore = create<EditorState>()(
         if (typeof window !== 'undefined') {
           try {
             localStorage.setItem('gatc_theme', nextTheme);
-          } catch {}
+          } catch (e) {
+            console.warn('Failed to save theme in localStorage', e);
+          }
         }
       }),
 
@@ -246,7 +248,9 @@ export const useEditorStore = create<EditorState>()(
         if (typeof window !== 'undefined') {
           try {
             localStorage.setItem('gatc_theme', theme);
-          } catch {}
+          } catch (e) {
+            console.warn('Failed to save theme in localStorage', e);
+          }
         }
       }),
 

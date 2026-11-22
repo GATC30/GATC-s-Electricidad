@@ -23,7 +23,7 @@ export function escapeHtml(str: unknown): string {
     if (str === null || str === undefined) return '';
     return String(str);
   }
-  return str.replace(/[&<>"'`=\/]/g, (char) => HTML_ESCAPE_MAP[char] || char);
+  return str.replace(/[&<>"'`=/]/g, (char) => HTML_ESCAPE_MAP[char] || char);
 }
 
 /**
