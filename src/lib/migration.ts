@@ -102,7 +102,7 @@ export function detectLegacyData(): LegacyDetectionResult {
         processedIds.add(slotId);
         projects.push({
           id: slotId,
-          name: sanitizeProjectName(legacyNames[String(slot)] || `Proyecto ${slot} (Slot Antiguo)`),
+          name: sanitizeProjectName(legacyNames?.[String(slot)] || `Proyecto ${slot} (Slot Antiguo)`),
           updated: Date.now(),
           sourceKey: slotKey,
           wallsCount: Array.isArray(slotData.walls) ? slotData.walls.length : 0,

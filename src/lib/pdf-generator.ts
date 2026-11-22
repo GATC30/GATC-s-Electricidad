@@ -6,7 +6,7 @@
  */
 
 import { jsPDF } from 'jspdf';
-import { ProjectState, Box, Wall } from '../engine/types';
+import { ProjectState, Box, Wall, DeviceKey } from '../engine/types';
 import { calculateBOM, BOMCalculationResult } from '../engine/bom';
 import { CATALOG } from '../engine/catalog';
 import { render2D } from '../engine/renderer2d';
@@ -606,7 +606,7 @@ export class PDFGenerator {
       new Set(
         this.state.boxes
           .map((b) => b.device)
-          .filter((d): d is string => Boolean(d))
+          .filter((d): d is DeviceKey => Boolean(d))
       )
     );
 

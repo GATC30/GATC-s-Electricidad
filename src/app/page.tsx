@@ -33,9 +33,9 @@ export default function HomePage() {
           id: p.id,
           name: sanitizeProjectName(p.name || 'Proyecto GATC'),
           updated: p.updated || Date.now(),
-          wallsCount: Array.isArray(p.state?.walls) ? p.state.walls.length : 0,
-          boxesCount: Array.isArray(p.state?.boxes) ? p.state.boxes.length : 0,
-          circuitsCount: Array.isArray(p.state?.routes) ? p.state.routes.length : 0
+          wallsCount: p.wallsCount || 0,
+          boxesCount: p.boxesCount || 0,
+          circuitsCount: p.circuitsCount || 0
         }));
         setProjects(summaries);
         return;
@@ -316,7 +316,7 @@ export default function HomePage() {
             onRenameProject={handleRenameProject}
             onDeleteProject={(id) => setDeleteId(id)}
             onExportProject={handleExportProject}
-            onImportFile={handleImportGatc}
+            onImportGatc={handleImportGatc}
           />
         )}
       </main>
@@ -325,12 +325,12 @@ export default function HomePage() {
       <ConfirmDialog
         isOpen={Boolean(deleteId)}
         title="¿Eliminar Proyecto Definitivamente?"
-        message="Esta acción no se puede deshacer. Se eliminarán todas las paredes, cajas eléctricas, circuitos y presupuestos asociados a este proyecto."
-        confirmText="Sí, Eliminar Proyecto"
-        cancelText="Cancelar"
+        description="Esta acción no se puede deshacer. Se eliminarán todas las paredes, cajas eléctricas, circuitos y presupuestos asociados a este proyecto."
+        confirmLabel="Sí, Eliminar Proyecto"
+        cancelLabel="Cancelar"
         variant="danger"
         onConfirm={handleDeleteConfirm}
-        onCancel={() => setDeleteId(null)}
+        onClose={() => setDeleteId(null)}
       />
 
       {/* Legacy Migration Modal (F9-02) */}

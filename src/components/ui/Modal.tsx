@@ -10,6 +10,7 @@ export interface ModalProps {
   children: React.ReactNode;
   footer?: React.ReactNode;
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
   showCloseButton?: boolean;
 }
 
@@ -21,6 +22,7 @@ export const Modal: React.FC<ModalProps> = ({
   children,
   footer,
   maxWidth = 'md',
+  size,
   showCloseButton = true
 }) => {
   useEffect(() => {
@@ -67,7 +69,7 @@ export const Modal: React.FC<ModalProps> = ({
 
       {/* Dialog Card */}
       <div
-        className={`relative w-full ${maxWidthClasses[maxWidth]} bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl shadow-indigo-950/40 text-slate-100 overflow-hidden transform transition-all animate-in zoom-in-95 duration-200 z-10`}
+        className={`relative w-full ${maxWidthClasses[size || maxWidth]} bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl shadow-indigo-950/40 text-slate-100 overflow-hidden transform transition-all animate-in zoom-in-95 duration-200 z-10`}
       >
         {/* Header */}
         {(title || showCloseButton) && (

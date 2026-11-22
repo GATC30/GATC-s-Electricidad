@@ -10,6 +10,8 @@ import {
   ProjectState,
   Wall,
   Box,
+  BoxType,
+  DeviceKey,
   Tube,
   Route,
   ProjectConfig,
@@ -78,13 +80,14 @@ export function migrateV1toV2(rawV1: Record<string, any>, warnings: string[] = [
   // 1. Levels normalization
   let levels: number[] = [1];
   if (Array.isArray(data.levels) && data.levels.length > 0) {
-    const parsedLevels = Array.from(
+    const parsedLevels: number[] = Array.from(
       new Set(
         data.levels
           .filter((l: any) => typeof l === 'number' && !isNaN(l) && l >= 1)
           .map((l: number) => Math.floor(l))
       )
-    ).sort((a: number, b: number) => a - b);
+    );
+    parsedLevels.sort((a, b) => a - b);
 
     if (parsedLevels.length > 0) {
       levels = parsedLevels;
@@ -125,8 +128,7 @@ export function migrateV1toV2(rawV1: Record<string, any>, warnings: string[] = [
         lengthM,
         heightM: typeof w.heightM === 'number' && w.heightM > 0 ? w.heightM : DEFAULT_WALL_HEIGHT,
         wW: typeof w.wW === 'number' && w.wW > 0 ? w.wW : DEFAULT_WALL_WIDTH,
-        locked: Boolean(w.locked),
-        customProps: w.customProps || {}
+        locked: Boolean(w.locked)
       });
     });
   } else {
@@ -153,16 +155,19 @@ export function migrateV1toV2(rawV1: Record<string, any>, warnings: string[] = [
         });
       }
 
+      const primaryDevice = devices[0] as DeviceKey | undefined;
+
       boxes.push({
         id: typeof b.id === 'string' && b.id.trim() ? b.id : generateId('box'),
         lvl: typeof b.lvl === 'number' ? Math.max(1, Math.floor(b.lvl)) : 1,
         x,
         y,
-        type: typeof b.type === 'string' ? b.type : 'box_oct',
-        label: typeof b.label === 'string' ? sanitizeLabel(b.label, 50) : '',
-        h: typeof b.h === 'number' ? b.h : 0.40,
-        devices,
-        conduit: typeof b.conduit === 'string' ? b.conduit : 'pvc_3_4'
+        z: typeof b.h === 'number' ? b.h : (typeof b.z === 'number' ? b.z : 0.40),
+        type: typeof b.type === 'string' ? (b.type as BoxType) : 'box_oct',
+        dim: b.dim || { w: 0.1, h: 0.1 },
+        rot: typeof b.rot === 'number' ? b.rot : 0,
+        device: primaryDevice || null,
+        label: typeof b.label === 'string' ? sanitizeLabel(b.label, 50) : ''
       });
     });
   }
@@ -175,15 +180,13 @@ export function migrateV1toV2(rawV1: Record<string, any>, warnings: string[] = [
       tubes.push({
         id: typeof t.id === 'string' && t.id.trim() ? t.id : generateId('tube'),
         lvl: typeof t.lvl === 'number' ? Math.max(1, Math.floor(t.lvl)) : 1,
-        box1Id: typeof t.box1Id === 'string' ? t.box1Id : '',
-        box2Id: typeof t.box2Id === 'string' ? t.box2Id : '',
-        type: typeof t.type === 'string' ? t.type : 'pvc',
-        dia: typeof t.dia === 'string' ? t.dia : '3/4"',
-        c: typeof t.c === 'number' ? t.c : 0,
+        startId: typeof t.startId === 'string' ? t.startId : (typeof t.box1Id === 'string' ? t.box1Id : ''),
+        endId: typeof t.endId === 'string' ? t.endId : (typeof t.box2Id === 'string' ? t.box2Id : ''),
+        type: typeof t.type === 'string' ? t.type : 'tub_pvc_3/4',
+        place: (t.place === 'techo' || t.place === 'pared' || t.place === 'suelo') ? t.place : 'techo',
         pts: Array.isArray(t.pts)
           ? t.pts.filter((p: any) => p && typeof p.x === 'number' && typeof p.y === 'number')
-          : [],
-        len: typeof t.len === 'number' && t.len >= 0 ? t.len : 0
+          : []
       });
     });
   }

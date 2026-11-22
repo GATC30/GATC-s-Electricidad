@@ -5,6 +5,7 @@
 
 import {
   ProjectState,
+  Phase,
   Wall,
   Box,
   Tube,
@@ -338,7 +339,7 @@ export function validateGatcFile(raw: unknown): ValidationResult {
   }
 
   const sanitizedState: ProjectState = {
-    phase: isNumber(data.phase) && data.phase >= 1 && data.phase <= 4 ? data.phase : 1,
+    phase: (isNumber(data.phase) && data.phase >= 1 && data.phase <= 4 ? data.phase : 1) as Phase,
     lvlId: currentLevel,
     levels,
     is3D: false,
@@ -370,7 +371,5 @@ export function validateGatcFile(raw: unknown): ValidationResult {
     projectName,
     detectedVersion,
     wasMigrated: report.migrated
-  };
-}
   };
 }

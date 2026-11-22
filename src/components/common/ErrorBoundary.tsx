@@ -41,7 +41,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     // Report to monitoring service (F11-05)
     reportError(error, {
       component: this.props.name || 'UnknownComponent',
-      componentStack: errorInfo.componentStack
+      componentStack: errorInfo.componentStack || undefined
     });
   }
 

@@ -79,6 +79,7 @@ export interface Wall {
   lengthM: number;
   heightM?: number;
   wW?: number; // Wall width/thickness in meters
+  grow?: 'center' | 'l1' | 'l2';
   locked?: boolean;
   detached?: boolean;
   n1F?: boolean; // Node 1 fixed

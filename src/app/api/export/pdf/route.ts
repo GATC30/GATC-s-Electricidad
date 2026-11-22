@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db';
 import { enforceRateLimit } from '@/lib/rate-limit';
 import { calculateBOM } from '@/engine/bom';
 import { CATALOG } from '@/engine/catalog';
-import { ProjectState } from '@/engine/types';
+import { ProjectState, DeviceKey } from '@/engine/types';
 import { DEFAULT_WALL_HEIGHT, DEFAULT_WALL_WIDTH } from '@/engine/constants';
 
 export const runtime = 'nodejs';
@@ -223,7 +223,7 @@ export async function POST(req: NextRequest) {
       new Set(
         state.boxes
           .map((b) => b.device)
-          .filter((d): d is string => Boolean(d))
+          .filter((d): d is DeviceKey => Boolean(d))
       )
     );
 

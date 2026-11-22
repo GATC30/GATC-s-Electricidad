@@ -15,6 +15,8 @@ import {
 } from './constants';
 import { CATALOG, getDefaultGlobalPrices, getReadableItemLabel } from './catalog';
 
+export type BOMCalculationResult = BOMSummary;
+
 /**
  * Calculates the exact 3D travel length of a conduit segment in meters,
  * including horizontal distance and vertical drops/rises depending on placement.

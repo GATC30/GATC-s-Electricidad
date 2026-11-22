@@ -12,9 +12,22 @@ export interface ToastMessage {
   duration?: number;
 }
 
+export interface ToastOptions {
+  message: string;
+  type?: ToastType | string;
+  title?: string;
+  duration?: number;
+}
+
 interface ToastContextType {
   toasts: ToastMessage[];
   showToast: (message: string, type?: ToastType, title?: string, duration?: number) => void;
+  addToast: (
+    optionsOrMessage: ToastOptions | string,
+    type?: ToastType | string,
+    title?: string,
+    duration?: number
+  ) => void;
   removeToast: (id: string) => void;
 }
 
@@ -43,8 +56,29 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     [removeToast]
   );
 
+  const addToast = useCallback(
+    (
+      optionsOrMessage: ToastOptions | string,
+      type?: ToastType | string,
+      title?: string,
+      duration?: number
+    ) => {
+      if (typeof optionsOrMessage === 'object' && optionsOrMessage !== null) {
+        showToast(
+          optionsOrMessage.message,
+          (optionsOrMessage.type as ToastType) || 'info',
+          optionsOrMessage.title,
+          optionsOrMessage.duration ?? 3500
+        );
+      } else {
+        showToast(optionsOrMessage, (type as ToastType) || 'info', title, duration ?? 3500);
+      }
+    },
+    [showToast]
+  );
+
   return (
-    <ToastContext.Provider value={{ toasts, showToast, removeToast }}>
+    <ToastContext.Provider value={{ toasts, showToast, addToast, removeToast }}>
       {children}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </ToastContext.Provider>
@@ -58,6 +92,7 @@ export const useToast = () => {
     return {
       toasts: [],
       showToast: (msg: string) => console.log('Toast:', msg),
+      addToast: (msg: any) => console.log('Toast:', msg),
       removeToast: () => {}
     };
   }
