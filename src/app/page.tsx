@@ -8,6 +8,7 @@ import { ConfirmDialog } from '@/components/ui';
 import { sanitizeProjectName } from '@/utils/sanitize';
 import { safeSetItem, safeGetItem, safeRemoveItem } from '@/utils/storage';
 import { validateGatcFile } from '@/lib/validators';
+import { exportProject } from '@/lib/export';
 import { storageAdapter, SyncStatus } from '@/lib/storage';
 
 export default function HomePage() {
@@ -123,26 +124,28 @@ export default function HomePage() {
     try {
       const rawData = safeGetItem<any>(`ecad_data_${id}`);
       const projectMeta = projects.find((p) => p.id === id);
-      const dataToExport = rawData || {
-        id,
-        name: projectMeta?.name || 'Proyecto GATC',
-        version: '2.0',
-        exportedAt: new Date().toISOString(),
-        walls: [],
-        boxes: [],
-        tubes: [],
-        routes: []
-      };
-
-      const blob = new Blob([JSON.stringify(dataToExport, null, 2)], {
-        type: 'application/json'
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${(projectMeta?.name || 'proyecto').replace(/\s+/g, '_')}.gatc`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const projName = projectMeta?.name || 'Proyecto GATC';
+      exportProject(
+        projName,
+        rawData || {
+          phase: 1,
+          lvlId: 1,
+          levels: [1],
+          is3D: false,
+          tool: 'select',
+          showDims: true,
+          showRulers: false,
+          pConf: { wW: 0.2, wH: 2.8 },
+          walls: [],
+          boxes: [],
+          tubes: [],
+          routes: [],
+          customMats: [],
+          overrides: {},
+          prices: {},
+          recentColors: []
+        }
+      );
     } catch (err) {
       console.error('Error exporting project:', err);
     }

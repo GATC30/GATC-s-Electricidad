@@ -172,11 +172,11 @@
 
 | ID | Tarea | Prioridad | Estado |
 |------|------|------|------|
-| F7-01 | Crear `src/components/editor/Viewer3D.tsx` — Visor Three.js con React Three Fiber: paredes, puertas, ventanas, escaleras, dispositivos eléctricos, tuberías, cables. Capas togglables. Disposición correcta de recursos al desmontar | 🟧 | ⬜ |
-| F7-02 | Crear `src/engine/renderer3d.ts` — Funciones para generar meshes 3D desde el estado del proyecto: `createWallMesh`, `createBoxMesh`, `createTubeMesh`, `createCableMesh`. Multi-nivel con offset Y | 🟧 | ⬜ |
-| F7-03 | Crear `src/lib/pdf-generator.ts` — Clase `PDFGenerator` con métodos: `addArchitecturePage(level)`, `addElectricalPage(level)`, `addQuotePage(bom)`, `addMemoryPage(summary)`, `addNomenclaturePage(devices)`. Render a canvas offscreen en alta resolución (4×) | 🟥 | ⬜ |
-| F7-04 | Crear API Route `src/app/api/export/pdf/route.ts` — Generación de PDF server-side como alternativa. Almacenar en Vercel Blob y retornar URL de descarga | 🟨 | ⬜ |
-| F7-05 | Implementar importación/exportación `.gatc` como componentes React: `ImportButton` y función `exportProject()`. Validación completa del archivo al importar (usar `validators.ts`) | 🟧 | ⬜ |
+| F7-01 | Crear `src/components/editor/Viewer3D.tsx` — Visor Three.js con React Three Fiber: paredes, puertas, ventanas, escaleras, dispositivos eléctricos, tuberías, cables. Capas togglables. Disposición correcta de recursos al desmontar | 🟧 | ✅ |
+| F7-02 | Crear `src/engine/renderer3d.ts` — Funciones para generar meshes 3D desde el estado del proyecto: `createWallMesh`, `createBoxMesh`, `createTubeMesh`, `createCableMesh`. Multi-nivel con offset Y | 🟧 | ✅ |
+| F7-03 | Crear `src/lib/pdf-generator.ts` — Clase `PDFGenerator` con métodos: `addArchitecturePage(level)`, `addElectricalPage(level)`, `addQuotePage(bom)`, `addMemoryPage(summary)`, `addNomenclaturePage(devices)`. Render a canvas offscreen en alta resolución (4×) | 🟥 | ✅ |
+| F7-04 | Crear API Route `src/app/api/export/pdf/route.ts` — Generación de PDF server-side como alternativa. Almacenar en Vercel Blob y retornar URL de descarga | 🟨 | ✅ |
+| F7-05 | Implementar importación/exportación `.gatc` como componentes React: `ImportButton` y función `exportProject()`. Validación completa del archivo al importar (usar `validators.ts`) | 🟧 | ✅ |
 
 **Criterio de aceptación:** El visor 3D renderiza correctamente paredes, elementos y cables sin fugas de memoria. El PDF generado incluye todas las secciones seleccionadas con la misma calidad que la versión actual o mejor.
 
