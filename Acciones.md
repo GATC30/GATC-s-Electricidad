@@ -248,14 +248,14 @@
 
 | ID | Tarea | Prioridad | Estado |
 |------|------|------|------|
-| F11-01 | Implementar React Error Boundaries — Componentes `ErrorBoundary` para canvas, visor 3D, paneles de fases. Mostrar UI de fallback con opción de reiniciar el editor sin perder datos | 🟥 | ⬜ |
-| F11-02 | Implementar loading states y skeletons — Spinner/skeleton al cargar proyecto, loading overlay al generar PDF, skeleton en pantalla de inicio mientras se cargan proyectos | 🟧 | ⬜ |
-| F11-03 | Configurar rate limiting en API Routes — Limitar a 60 req/min por usuario en endpoints de CRUD, 10 req/min en generación de PDF. Usar Vercel KV para contadores | 🟧 | ⬜ |
-| F11-04 | Configurar security headers en `next.config.ts` — CSP (Content Security Policy), X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy | 🟧 | ⬜ |
-| F11-05 | Configurar monitoreo de errores con Sentry (o Vercel Error Tracking) — Captura automática de errores JS, source maps en producción, alertas por email | 🟨 | ⬜ |
-| F11-06 | Crear `README.md` del proyecto — Descripción, screenshots, stack tecnológico, instrucciones de setup local, variables de entorno, despliegue, licencia | 🟨 | ⬜ |
-| F11-07 | Configurar SEO básico — Meta tags (Open Graph, Twitter Cards), favicon, app icons para PWA (192×192, 512×512), `robots.txt`, `sitemap.xml` | 🟨 | ⬜ |
-| F11-08 | Despliegue a producción en Vercel: configurar dominio, variables de entorno de producción, base de datos de producción, DNS, monitoreo con Vercel Analytics y Speed Insights | 🟥 | ⬜ |
+| F11-01 | Implementar React Error Boundaries — Componentes `ErrorBoundary` para canvas, visor 3D, paneles de fases. Mostrar UI de fallback con opción de reiniciar el editor sin perder datos | 🟥 | ✅ |
+| F11-02 | Implementar loading states y skeletons — Spinner/skeleton al cargar proyecto, loading overlay al generar PDF, skeleton en pantalla de inicio mientras se cargan proyectos | 🟧 | ✅ |
+| F11-03 | Configurar rate limiting en API Routes — Limitar a 60 req/min por usuario en endpoints de CRUD, 10 req/min en generación de PDF. Usar Vercel KV para contadores | 🟧 | ✅ |
+| F11-04 | Configurar security headers en `next.config.ts` — CSP (Content Security Policy), X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy | 🟧 | ✅ |
+| F11-05 | Configurar monitoreo de errores con Sentry (o Vercel Error Tracking) — Captura automática de errores JS, source maps en producción, alertas por email | 🟨 | ✅ |
+| F11-06 | Crear `README.md` del proyecto — Descripción, screenshots, stack tecnológico, instrucciones de setup local, variables de entorno, despliegue, licencia | 🟨 | ✅ |
+| F11-07 | Configurar SEO básico — Meta tags (Open Graph, Twitter Cards), favicon, app icons para PWA (192×192, 512×512), `robots.txt`, `sitemap.xml` | 🟨 | ✅ |
+| F11-08 | Despliegue a producción en Vercel: configurar dominio, variables de entorno de producción, base de datos de producción, DNS, monitoreo con Vercel Analytics y Speed Insights | 🟥 | ✅ |
 
 **Criterio de aceptación:** La app no muestra errores técnicos al usuario (siempre muestra UI de fallback). Los endpoints API tienen rate limiting. Los headers de seguridad pasan auditoría. El deploy en producción es exitoso con URL pública funcional.
 

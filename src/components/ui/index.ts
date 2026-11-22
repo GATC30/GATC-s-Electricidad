@@ -5,4 +5,5 @@ export * from './Input';
 export * from './Select';
 export * from './Tooltip';
 export * from './ConfirmDialog';
+export * from './Skeleton';
 export * from '../common/ImportButton';

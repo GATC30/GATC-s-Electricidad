@@ -7,3 +7,5 @@ export * from './auth';
 export * from './schema-version';
 export * from './migration';
 export * from './pwa';
+export * from './monitoring';
+export * from './rate-limit';

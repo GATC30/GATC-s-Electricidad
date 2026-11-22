@@ -3,6 +3,12 @@
   "framework": "nextjs",
   "buildCommand": "next build",
   "installCommand": "npm install",
+  "functions": {
+    "src/app/api/export/pdf/route.ts": {
+      "maxDuration": 30,
+      "memory": 1024
+    }
+  },
   "headers": [
     {
       "source": "/(.*)",
@@ -31,6 +37,15 @@
         {
           "key": "Cache-Control",
           "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/icons/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=604800"
         }
       ]
     }

@@ -3,9 +3,14 @@ import { prisma, isDatabaseConfigured } from '@/lib/db';
 import { getCurrentUserId } from '@/lib/auth';
 import { sanitizeProjectName } from '@/utils/sanitize';
 import { validateGatcFile } from '@/lib/validators';
+import { enforceRateLimit } from '@/lib/rate-limit';
 
 export async function GET(req: NextRequest) {
   try {
+    // Rate limit: 60 requests per minute (F11-03)
+    const rateLimitResponse = await enforceRateLimit(req, { limit: 60, windowSec: 60, prefix: 'projects_get' });
+    if (rateLimitResponse) return rateLimitResponse;
+
     const userId = await getCurrentUserId();
 
     if (!isDatabaseConfigured()) {
@@ -56,6 +61,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const rateLimitResponse = await enforceRateLimit(req, { limit: 60, windowSec: 60, prefix: 'projects_post' });
+    if (rateLimitResponse) return rateLimitResponse;
+
     const userId = await getCurrentUserId();
     const body = await req.json();
 

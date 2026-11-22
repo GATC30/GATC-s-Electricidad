@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { put } from '@vercel/blob';
 import { jsPDF } from 'jspdf';
 import { prisma } from '@/lib/db';
+import { enforceRateLimit } from '@/lib/rate-limit';
 import { calculateBOM } from '@/engine/bom';
 import { CATALOG } from '@/engine/catalog';
 import { ProjectState } from '@/engine/types';
@@ -23,6 +24,10 @@ interface ExportPdfRequestBody {
  */
 export async function POST(req: NextRequest) {
   try {
+    // Rate limit check: 10 requests per minute for PDF generation (F11-03)
+    const rateLimitResponse = await enforceRateLimit(req, { limit: 10, windowSec: 60, prefix: 'pdf_export' });
+    if (rateLimitResponse) return rateLimitResponse;
+
     const body = (await req.json()) as ExportPdfRequestBody;
     const { projectId, projectName = 'Proyecto_GATC', state, saveToBlob = true } = body;
 

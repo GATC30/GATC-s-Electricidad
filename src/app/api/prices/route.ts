@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma, isDatabaseConfigured } from '@/lib/db';
 import { getCurrentUserId } from '@/lib/auth';
 import { CATALOG } from '@/engine/catalog';
+import { enforceRateLimit } from '@/lib/rate-limit';
 
 export async function GET(req: NextRequest) {
   try {
+    const rateLimitResponse = await enforceRateLimit(req, { limit: 60, windowSec: 60, prefix: 'prices_get' });
+    if (rateLimitResponse) return rateLimitResponse;
+
     const userId = await getCurrentUserId();
 
     if (!isDatabaseConfigured()) {
@@ -34,6 +38,9 @@ export async function GET(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
+    const rateLimitResponse = await enforceRateLimit(req, { limit: 60, windowSec: 60, prefix: 'prices_put' });
+    if (rateLimitResponse) return rateLimitResponse;
+
     const userId = await getCurrentUserId();
     const body = await req.json();
     const prices = body.prices || body;

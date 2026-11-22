@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { ProjectGrid } from '@/components/projects';
 import { ProjectSummary } from '@/components/projects/ProjectCard';
-import { ConfirmDialog } from '@/components/ui';
+import { ConfirmDialog, SkeletonCard } from '@/components/ui';
 import { MigrationModal } from '@/components/modals';
 import { sanitizeProjectName } from '@/utils/sanitize';
 import { safeSetItem, safeGetItem, safeRemoveItem } from '@/utils/storage';
@@ -16,6 +16,7 @@ import { detectLegacyData, LegacyDetectionResult, MigrationResult } from '@/lib/
 export default function HomePage() {
   const router = useRouter();
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [mousePos, setMousePos] = useState({ x: '50vw', y: '50vh' });
   const [legacyDetection, setLegacyDetection] = useState<LegacyDetectionResult | null>(null);
@@ -89,6 +90,8 @@ export default function HomePage() {
       safeSetItem('ecad_projects_index', initialProjects);
     } catch (e) {
       console.error('Error loading projects from storage:', e);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -298,16 +301,24 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* Project Grid with Import, Rename, Delete */}
-        <ProjectGrid
-          projects={projects}
-          onOpenProject={handleOpenProject}
-          onNewProject={handleNewProject}
-          onRenameProject={handleRenameProject}
-          onDeleteProject={(id) => setDeleteId(id)}
-          onExportProject={handleExportProject}
-          onImportFile={handleImportGatc}
-        />
+        {/* Project Grid with Loading Skeletons */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+        ) : (
+          <ProjectGrid
+            projects={projects}
+            onOpenProject={handleOpenProject}
+            onNewProject={handleNewProject}
+            onRenameProject={handleRenameProject}
+            onDeleteProject={(id) => setDeleteId(id)}
+            onExportProject={handleExportProject}
+            onImportFile={handleImportGatc}
+          />
+        )}
       </main>
 
       {/* Delete Confirmation Modal */}

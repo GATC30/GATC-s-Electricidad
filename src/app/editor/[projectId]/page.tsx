@@ -32,7 +32,8 @@ import {
   ProjectState,
   CustomMaterial
 } from '@/engine/types';
-import { ToastProvider, useToast } from '@/components/ui';
+import { ToastProvider, useToast, SkeletonEditor } from '@/components/ui';
+import { ErrorBoundary } from '@/components/common';
 import { sanitizeProjectName } from '@/utils/sanitize';
 import { safeSetItem, safeGetItem, onStorageError } from '@/utils/storage';
 import { validateGatcFile } from '@/lib/validators';
@@ -54,6 +55,7 @@ function EditorContent() {
   // Modal states for Phase 5 & 7
   const [isWireModalOpen, setIsWireModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isLoadingProject, setIsLoadingProject] = useState(true);
   const [activeRouteId, setActiveRouteId] = useState<string | null>(null);
   const [editingTubeId, setEditingTubeId] = useState<string | null>(null);
 
@@ -266,6 +268,8 @@ function EditorContent() {
         clearHistory(getSnapshot());
       } catch (e) {
         console.error('Error loading project:', e);
+      } finally {
+        if (isMounted) setIsLoadingProject(false);
       }
     }
 
@@ -733,6 +737,10 @@ function EditorContent() {
     recentColors: []
   };
 
+  if (isLoadingProject) {
+    return <SkeletonEditor />;
+  }
+
   return (
     <div
       className={`flex flex-col h-screen w-screen overflow-hidden select-none transition-colors duration-200 ${
@@ -819,16 +827,18 @@ function EditorContent() {
         {is3D ? (
           /* 3D Visualizer (F7-01) */
           <div className="flex-1 relative h-full w-full">
-            <Viewer3D
-              walls={walls}
-              boxes={boxes}
-              tubes={tubes}
-              routes={routes}
-              config={projectConfig}
-              levels={levels}
-              currentLevel={currentLevel}
-              onClose={() => setIs3D(false)}
-            />
+            <ErrorBoundary name="Visor 3D">
+              <Viewer3D
+                walls={walls}
+                boxes={boxes}
+                tubes={tubes}
+                routes={routes}
+                config={projectConfig}
+                levels={levels}
+                currentLevel={currentLevel}
+                onClose={() => setIs3D(false)}
+              />
+            </ErrorBoundary>
           </div>
         ) : activePhase === 1 || activePhase === 2 ? (
           <>
@@ -853,14 +863,16 @@ function EditorContent() {
 
             {/* Center Interactive CAD Canvas */}
             <div className="flex-1 relative h-full overflow-hidden">
-              <Canvas2D
-                onSaveState={recordChange}
-                onOpenWireModal={(routeId) => handleOpenWireModal(routeId, null)}
-                onToast={(msg) => addToast({ title: 'Aviso CAD', message: msg, type: 'info' })}
-              />
+              <ErrorBoundary name="Lienzo CAD 2D">
+                <Canvas2D
+                  onSaveState={recordChange}
+                  onOpenWireModal={(routeId) => handleOpenWireModal(routeId, null)}
+                  onToast={(msg) => addToast({ title: 'Aviso CAD', message: msg, type: 'info' })}
+                />
 
-              {/* Minimap (F8-03) */}
-              <Minimap />
+                {/* Minimap (F8-03) */}
+                <Minimap />
+              </ErrorBoundary>
             </div>
 
             {/* Right Properties Panel */}
@@ -921,31 +933,35 @@ function EditorContent() {
         ) : activePhase === 3 ? (
           /* Phase 3: Cotización / Presupuesto */
           <div className={`flex-1 overflow-y-auto h-full ${theme === 'dark' ? 'bg-[#080b12]' : 'bg-[#f8fafc]'}`}>
-            <QuoteView
-              state={fullProjectState}
-              onUpdateOverrides={(key, val) => {
-                setOverrides({ ...overrides, [key]: val });
-                recordChange();
-              }}
-              onUpdatePrices={(key, val) => {
-                setPrices({ ...prices, [key]: val });
-                recordChange();
-              }}
-              onAddCustomMaterial={(mat) => {
-                setCustomMats([...customMats, mat]);
-                recordChange();
-              }}
-              onDeleteCustomMaterial={(idx) => {
-                setCustomMats(customMats.filter((_, i) => i !== idx));
-                recordChange();
-              }}
-              onOpenGlobalPrices={openPricesModal}
-            />
+            <ErrorBoundary name="Cotización de Presupuesto (BOM)">
+              <QuoteView
+                state={fullProjectState}
+                onUpdateOverrides={(key, val) => {
+                  setOverrides({ ...overrides, [key]: val });
+                  recordChange();
+                }}
+                onUpdatePrices={(key, val) => {
+                  setPrices({ ...prices, [key]: val });
+                  recordChange();
+                }}
+                onAddCustomMaterial={(mat) => {
+                  setCustomMats([...customMats, mat]);
+                  recordChange();
+                }}
+                onDeleteCustomMaterial={(idx) => {
+                  setCustomMats(customMats.filter((_, i) => i !== idx));
+                  recordChange();
+                }}
+                onOpenGlobalPrices={openPricesModal}
+              />
+            </ErrorBoundary>
           </div>
         ) : (
           /* Phase 4: Memoria Descriptiva */
           <div className={`flex-1 overflow-y-auto h-full ${theme === 'dark' ? 'bg-[#080b12]' : 'bg-[#f8fafc]'}`}>
-            <MemoryView state={fullProjectState} />
+            <ErrorBoundary name="Memoria Descriptiva">
+              <MemoryView state={fullProjectState} />
+            </ErrorBoundary>
           </div>
         )}
       </div>

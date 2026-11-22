@@ -1,0 +1,8 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /editor/*?*
+
+# Sitemap
+Sitemap: https://gatc.vercel.app/sitemap.xml
