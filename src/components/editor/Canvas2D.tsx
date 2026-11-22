@@ -31,16 +31,22 @@ export interface Canvas2DProps {
   onUpdateBox?: (box: Box) => void;
   onAddTube?: (tube: Tube) => void;
   onSaveState?: () => void;
+  onOpenWireModal?: (routeId: string | null) => void;
+  onToast?: (message: string) => void;
   showDims?: boolean;
   showRulers?: boolean;
 }
 
 export const Canvas2D: React.FC<Canvas2DProps> = ({
-  onSaveState
+  onSaveState,
+  onOpenWireModal,
+  onToast
 }) => {
   const { containerRef, canvasRef, events } = useCanvas({
     theme: 'dark',
-    onSaveState
+    onSaveState,
+    onOpenWireModal,
+    onToast
   });
 
   const { tool, zoom, cursorCoords } = useEditorStore();

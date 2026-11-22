@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Wall, Box, Tube, ProjectConfig, DeviceKey } from '@/engine/types';
+import { Wall, Box, Tube, Route, ProjectConfig, DeviceKey, Phase } from '@/engine/types';
 import { CATALOG } from '@/engine/catalog';
-import { Button, Input, Select } from '@/components/ui';
+import { Button } from '@/components/ui';
 import { sanitizeLabel } from '@/utils/sanitize';
 
 export interface PropertiesPanelProps {
@@ -18,11 +18,16 @@ export interface PropertiesPanelProps {
     tubes: number;
     routes: number;
   };
+  routes?: Route[];
+  activePhase?: Phase;
   onUpdateWall?: (id: string, updates: Partial<Wall>) => void;
   onUpdateBox?: (id: string, updates: Partial<Box>) => void;
   onUpdateTube?: (id: string, updates: Partial<Tube>) => void;
   onUpdateProjectConfig?: (updates: Partial<ProjectConfig>) => void;
   onDeleteElement?: (type: 'wall' | 'box' | 'tube', id: string) => void;
+  onEditRoute?: (routeId: string, tubeId: string) => void;
+  onRemoveTubeFromRoute?: (routeId: string, tubeId: string) => void;
+  onStartWire?: (tubeId?: string) => void;
   onZoomToFit?: () => void;
 }
 
@@ -30,11 +35,16 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   selectedElement,
   projectConfig,
   elementsCount,
+  routes = [],
+  activePhase = 1,
   onUpdateWall,
   onUpdateBox,
   onUpdateTube,
   onUpdateProjectConfig,
   onDeleteElement,
+  onEditRoute,
+  onRemoveTubeFromRoute,
+  onStartWire,
   onZoomToFit
 }) => {
   const [isMobileExpanded, setIsMobileExpanded] = useState(false);
@@ -58,10 +68,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-indigo-500" />
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-200">
-            {type === 'wall' && 'Pared Seleccionada'}
-            {type === 'box' && 'Caja / Dispositivo'}
-            {type === 'tube' && 'Tubería PVC'}
-            {!type && 'Propiedades del Plano'}
+            {type ? `Propiedades: ${type.toUpperCase()}` : 'Configuración del Proyecto'}
           </h3>
         </div>
 
@@ -71,128 +78,165 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           aria-label={isMobileExpanded ? 'Colapsar panel' : 'Expandir panel'}
         >
           <svg
-            className={`w-4 h-4 transition-transform duration-200 ${isMobileExpanded ? 'rotate-180' : ''}`}
+            className={`w-4 h-4 transform transition-transform ${isMobileExpanded ? 'rotate-180' : ''}`}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
           </svg>
         </button>
       </div>
 
-      {/* Content Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-5 text-slate-200 text-xs">
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-5 text-xs text-slate-300">
         {/* CASE 1: WALL SELECTED */}
         {type === 'wall' && element && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-slate-400">ID de Elemento:</span>
+              <span className="text-slate-400">ID de Pared:</span>
               <span className="font-mono text-slate-200 bg-slate-800 px-2 py-0.5 rounded">
                 {(element as Wall).id.slice(0, 8)}
               </span>
             </div>
 
-            <div className="space-y-3">
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-400 mb-1">
-                  Longitud (metros)
-                </label>
-                <input
-                  type="number"
-                  step="0.05"
-                  value={(element as Wall).lengthM?.toFixed(2) || '0.00'}
-                  onChange={(e) =>
-                    onUpdateWall?.((element as Wall).id, {
-                      lengthM: parseFloat(e.target.value) || 0
-                    })
-                  }
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-400 mb-1">
-                  Grosor / Ancho (m)
-                </label>
-                <input
-                  type="number"
-                  step="0.05"
-                  value={(element as Wall).wW ?? projectConfig.wW}
-                  onChange={(e) =>
-                    onUpdateWall?.((element as Wall).id, {
-                      wW: parseFloat(e.target.value) || 0.2
-                    })
-                  }
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 outline-none focus:border-indigo-500"
-                />
-              </div>
+            {/* Lock Wall */}
+            <div className="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800">
+              <label className="text-slate-300 font-medium">Bloquear Pared</label>
+              <input
+                type="checkbox"
+                checked={(element as Wall).locked || false}
+                onChange={(e) =>
+                  onUpdateWall?.((element as Wall).id, { locked: e.target.checked })
+                }
+                className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 bg-slate-900 border-slate-700"
+              />
             </div>
 
-            {/* Checkbox Options */}
-            <div className="space-y-2 pt-2 border-t border-slate-800/80">
-              <label className="flex items-center gap-2 cursor-pointer">
+            {/* Node 1 & 2 Pinning */}
+            <div className="grid grid-cols-2 gap-2">
+              <label className="flex items-center gap-2 p-2 rounded bg-slate-950/60 border border-slate-800 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={(element as Wall).n1F || false}
                   onChange={(e) =>
                     onUpdateWall?.((element as Wall).id, { n1F: e.target.checked })
                   }
-                  className="rounded border-slate-700 bg-slate-800 text-indigo-600 focus:ring-0"
+                  className="rounded text-indigo-600"
                 />
-                <span className="text-slate-300">Fijar Nodo 1 (N1)</span>
+                <span className="text-[11px] text-slate-300">Fijar Nodo 1</span>
               </label>
 
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex items-center gap-2 p-2 rounded bg-slate-950/60 border border-slate-800 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={(element as Wall).n2F || false}
                   onChange={(e) =>
                     onUpdateWall?.((element as Wall).id, { n2F: e.target.checked })
                   }
-                  className="rounded border-slate-700 bg-slate-800 text-indigo-600 focus:ring-0"
+                  className="rounded text-indigo-600"
                 />
-                <span className="text-slate-300">Fijar Nodo 2 (N2)</span>
-              </label>
-
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={(element as Wall).locked || false}
-                  onChange={(e) =>
-                    onUpdateWall?.((element as Wall).id, { locked: e.target.checked })
-                  }
-                  className="rounded border-slate-700 bg-slate-800 text-indigo-600 focus:ring-0"
-                />
-                <span className="text-slate-300">Bloquear Edición</span>
+                <span className="text-[11px] text-slate-300">Fijar Nodo 2</span>
               </label>
             </div>
 
-            <Button
-              variant="danger"
-              size="sm"
-              className="w-full mt-4"
-              onClick={() => onDeleteElement?.('wall', (element as Wall).id)}
-            >
-              Eliminar Pared
-            </Button>
+            {/* Wall Height */}
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+                Altura de Pared (metros)
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                value={(element as Wall).heightM}
+                onChange={(e) =>
+                  onUpdateWall?.((element as Wall).id, {
+                    heightM: parseFloat(e.target.value) || 2.8
+                  })
+                }
+                disabled={(element as Wall).locked}
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 outline-none focus:border-indigo-500 disabled:opacity-50"
+              />
+            </div>
+
+            {/* Wall Thickness */}
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+                Grosor / Ancho (metros)
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  step="0.05"
+                  value={(element as Wall).wW || projectConfig.wW}
+                  onChange={(e) =>
+                    onUpdateWall?.((element as Wall).id, {
+                      wW: parseFloat(e.target.value) || 0.2
+                    })
+                  }
+                  disabled={(element as Wall).locked}
+                  className="w-1/2 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 outline-none focus:border-indigo-500 disabled:opacity-50"
+                />
+                <select
+                  value={(element as Wall).grow || 'center'}
+                  onChange={(e) =>
+                    onUpdateWall?.((element as Wall).id, {
+                      grow: e.target.value as any
+                    })
+                  }
+                  disabled={(element as Wall).locked}
+                  className="w-1/2 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-100 outline-none focus:border-indigo-500 disabled:opacity-50"
+                >
+                  <option value="center">Centro</option>
+                  <option value="l1">Hacia Lado 1</option>
+                  <option value="l2">Hacia Lado 2</option>
+                </select>
+              </div>
+            </div>
+
+            {!(element as Wall).locked && (
+              <Button
+                variant="danger"
+                size="sm"
+                className="w-full mt-4"
+                onClick={() => onDeleteElement?.('wall', (element as Wall).id)}
+              >
+                Eliminar Pared
+              </Button>
+            )}
           </div>
         )}
 
-        {/* CASE 2: BOX SELECTED */}
+        {/* CASE 2: BOX / ACCESSORY SELECTED */}
         {type === 'box' && element && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-slate-400">Tipo:</span>
-              <span className="font-semibold text-slate-200 capitalize">
-                {(element as Box).type.replace('_', ' ')}
+              <span className="text-slate-400">Tipo de Caja:</span>
+              <span className="font-mono text-slate-200 bg-slate-800 px-2 py-0.5 rounded uppercase">
+                {(element as Box).type}
               </span>
             </div>
 
+            {/* Invert Side / Flip 180 */}
+            <button
+              type="button"
+              onClick={() =>
+                onUpdateBox?.((element as Box).id, {
+                  rot: (((element as Box).rot || 0) + 180) % 360
+                })
+              }
+              className="w-full py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-2"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Invertir Lado (180°)
+            </button>
+
             {/* Device catalog selection */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-400 mb-1">
-                Dispositivo Eléctrico
+              <label className="block text-[11px] font-semibold text-indigo-400 uppercase tracking-wider mb-1">
+                Dispositivo Eléctrico Asignado
               </label>
               <select
                 value={(element as Box).device || ''}
@@ -204,12 +248,12 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                     z: newZ
                   });
                 }}
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-slate-100 outline-none focus:border-indigo-500 cursor-pointer"
+                className="w-full bg-slate-950 border border-indigo-500/50 rounded-xl px-3 py-2 text-slate-100 outline-none focus:border-indigo-400 cursor-pointer font-medium"
               >
-                <option value="">(Caja Vacía / Sin accesorio)</option>
+                <option value="">(Caja Vacía / Con tapadera ciega)</option>
                 {Object.entries(CATALOG).map(([key, spec]) => (
                   <option key={key} value={key}>
-                    {spec.label} ({spec.z.toFixed(2)}m - Q{spec.p})
+                    {spec.label} (Z: {spec.z.toFixed(2)}m - Q{spec.p})
                   </option>
                 ))}
               </select>
@@ -259,10 +303,10 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                 value={(element as Box).rot || 0}
                 onChange={(e) =>
                   onUpdateBox?.((element as Box).id, {
-                    rot: parseInt(e.target.value, 10)
+                    rot: parseInt(e.target.value) || 0
                   })
                 }
-                className="w-full accent-indigo-500"
+                className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
               />
             </div>
 
@@ -273,17 +317,17 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   Polos / Circuitos del Tablero
                 </label>
                 <select
-                  value={(element as Box).circs || 8}
+                  value={(element as Box).circs || 2}
                   onChange={(e) =>
                     onUpdateBox?.((element as Box).id, {
-                      circs: parseInt(e.target.value, 10)
+                      circs: parseInt(e.target.value) || 2
                     })
                   }
                   className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 outline-none"
                 >
                   {[1, 2, 4, 6, 8, 10, 12, 14, 16].map((p) => (
                     <option key={p} value={p}>
-                      {p} Polos
+                      {p} Polo{p === 1 ? '' : 's'}
                     </option>
                   ))}
                 </select>
@@ -365,6 +409,92 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                 <option value="pared">Por Pared (Directo)</option>
                 <option value="suelo">Por Suelo / Piso (-0.20m)</option>
               </select>
+            </div>
+
+            {/* Circuits / Routes inside this tube */}
+            <div className="pt-3 border-t border-slate-800">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-bold text-xs uppercase text-indigo-400 tracking-wider">
+                  Rutas de Cableado en este Tubo
+                </span>
+              </div>
+
+              {(() => {
+                const tubeRoutes = routes.filter(
+                  (r) => r.tubes && r.tubes.includes((element as Tube).id)
+                );
+
+                if (tubeRoutes.length === 0) {
+                  return (
+                    <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 text-slate-500 text-center italic text-[11px]">
+                      No hay cables enrutados por esta tubería.
+                      {onStartWire && (
+                        <button
+                          type="button"
+                          onClick={() => onStartWire((element as Tube).id)}
+                          className="mt-2 block w-full py-1 text-xs text-indigo-400 hover:text-indigo-300 font-semibold underline"
+                        >
+                          + Enrutar cable por aquí
+                        </button>
+                      )}
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-2">
+                    {tubeRoutes.map((r) => (
+                      <div
+                        key={r.id}
+                        className="p-2.5 rounded-xl bg-slate-950/80 border border-indigo-500/30 flex flex-col gap-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-slate-200 truncate" title={r.name}>
+                            {r.name}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {r.cables.length} {r.cables.length === 1 ? 'cable' : 'cables'}
+                          </span>
+                        </div>
+
+                        {/* Color swatches of conductors */}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {r.cables.map((c, cIdx) => (
+                            <span
+                              key={cIdx}
+                              className="w-3.5 h-3.5 rounded-full border border-white/20 inline-block shadow-sm"
+                              style={{ backgroundColor: c.color }}
+                              title={`${c.type} ${c.gauge} (${c.color})`}
+                            />
+                          ))}
+                        </div>
+
+                        {/* Route Actions for this tube */}
+                        <div className="flex items-center gap-1.5 pt-1 border-t border-slate-800/80 justify-end">
+                          {onEditRoute && (
+                            <button
+                              type="button"
+                              onClick={() => onEditRoute(r.id, (element as Tube).id)}
+                              className="px-2 py-1 rounded-md bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white text-[11px] font-semibold border border-indigo-500/30 transition-colors"
+                            >
+                              Editar
+                            </button>
+                          )}
+                          {onRemoveTubeFromRoute && (
+                            <button
+                              type="button"
+                              onClick={() => onRemoveTubeFromRoute(r.id, (element as Tube).id)}
+                              className="px-2 py-1 rounded-md bg-red-950/40 hover:bg-red-900/60 text-red-400 hover:text-red-300 text-[11px] font-semibold border border-red-800/30 transition-colors"
+                            >
+                              Quitar
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
 
             <Button

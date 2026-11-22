@@ -1,17 +1,31 @@
 'use client';
 
-import React, { useEffect, useCallback, useMemo } from 'react';
+import React, { useEffect, useCallback, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Header, PhaseTabs, Toolbar, PropertiesPanel, Canvas2D } from '@/components/editor';
 import { QuoteView, MemoryView } from '@/components/phases';
-import { Phase, ToolType, Wall, Box, Tube, ProjectConfig, ProjectState, CustomMaterial } from '@/engine/types';
+import { WireRouteModal, PricesModal } from '@/components/modals';
+import {
+  Phase,
+  ToolType,
+  Wall,
+  Box,
+  Tube,
+  Route,
+  Cable,
+  ProjectConfig,
+  ProjectState,
+  CustomMaterial
+} from '@/engine/types';
 import { ToastProvider, useToast } from '@/components/ui';
 import { sanitizeProjectName } from '@/utils/sanitize';
 import { safeSetItem, safeGetItem, onStorageError } from '@/utils/storage';
 import { validateGatcFile } from '@/lib/validators';
 import { generateProjectPDF } from '@/lib/pdf-generator';
+import { generateId } from '@/utils/math';
 import { useEditorStore } from '@/stores/editor-store';
 import { useProjectStore, ProjectSnapshot } from '@/stores/project-store';
+import { usePricesStore } from '@/stores/prices-store';
 import { useHistory } from '@/hooks/useHistory';
 
 function EditorContent() {
@@ -19,6 +33,14 @@ function EditorContent() {
   const router = useRouter();
   const { addToast } = useToast();
   const projectId = (params?.projectId as string) || 'default-project';
+
+  // Modal states for Phase 5
+  const [isWireModalOpen, setIsWireModalOpen] = useState(false);
+  const [activeRouteId, setActiveRouteId] = useState<string | null>(null);
+  const [editingTubeId, setEditingTubeId] = useState<string | null>(null);
+
+  // Prices Store
+  const { isPricesModalOpen, openPricesModal, closePricesModal, globalPrices } = usePricesStore();
 
   // Editor Store
   const {
@@ -30,6 +52,7 @@ function EditorContent() {
     is3D,
     selectedId,
     selectedType,
+    wireRoute,
     setTool: setActiveTool,
     setPhase: setActivePhase,
     setCurrentLevel,
@@ -38,7 +61,9 @@ function EditorContent() {
     toggle3D,
     setIs3D,
     setSelected,
-    clearSelection
+    clearSelection,
+    setWireRoute,
+    setWireStartId
   } = useEditorStore();
 
   // Project Store
@@ -67,6 +92,10 @@ function EditorContent() {
     updateTube,
     deleteTube,
     deleteElement,
+    addRoute,
+    updateRoute,
+    deleteRoute,
+    removeTubeFromRoute,
     addLevel,
     deleteLevel,
     setCustomMats,
@@ -404,6 +433,109 @@ function EditorContent() {
     }
   };
 
+  // Phase 5 Wire Route Handlers
+  const handleOpenWireModal = (routeId: string | null = null, tubeId: string | null = null) => {
+    setActiveRouteId(routeId);
+    setEditingTubeId(tubeId);
+    setIsWireModalOpen(true);
+  };
+
+  const handleSaveWireRoute = (
+    name: string,
+    cables: Cable[],
+    onlyCurrentTube: boolean = false
+  ) => {
+    if (activeRouteId) {
+      const existingRoute = routes.find((r) => r.id === activeRouteId);
+      if (existingRoute) {
+        if (onlyCurrentTube && editingTubeId) {
+          // Derive circuit: remove editingTubeId from original and make a new derived route
+          removeTubeFromRoute(activeRouteId, editingTubeId);
+          const newRoute: Route = {
+            id: generateId(),
+            name: `${name} (Deriv.)`,
+            tubes: [editingTubeId],
+            cables: JSON.parse(JSON.stringify(cables))
+          };
+          addRoute(newRoute);
+          addToast({
+            title: 'Derivación Creada',
+            message: `Derivación "${newRoute.name}" creada para el tramo`,
+            type: 'success'
+          });
+        } else {
+          updateRoute({
+            ...existingRoute,
+            name,
+            cables: JSON.parse(JSON.stringify(cables))
+          });
+          addToast({
+            title: 'Circuito Actualizado',
+            message: `Circuito "${name}" actualizado exitosamente`,
+            type: 'success'
+          });
+        }
+      }
+    } else {
+      // New wire route finished on canvas
+      if (wireRoute.length === 0) {
+        addToast({
+          title: 'Error de Enrutamiento',
+          message: 'No se seleccionaron tuberías para la ruta.',
+          type: 'warning'
+        });
+        return;
+      }
+
+      const newRoute: Route = {
+        id: generateId(),
+        name,
+        tubes: [...wireRoute],
+        cables: JSON.parse(JSON.stringify(cables))
+      };
+      addRoute(newRoute);
+      setWireRoute([]);
+      setWireStartId(null);
+      addToast({
+        title: 'Circuito Fijado',
+        message: `Circuito "${name}" guardado con ${newRoute.tubes.length} tramos`,
+        type: 'success'
+      });
+    }
+
+    recordChange();
+    setIsWireModalOpen(false);
+    setActiveRouteId(null);
+    setEditingTubeId(null);
+  };
+
+  const handleDeleteWireRoute = (routeId: string) => {
+    deleteRoute(routeId);
+    recordChange();
+    addToast({
+      title: 'Circuito Eliminado',
+      message: 'La ruta de cableado ha sido eliminada del proyecto',
+      type: 'info'
+    });
+    setIsWireModalOpen(false);
+    setActiveRouteId(null);
+    setEditingTubeId(null);
+  };
+
+  const handleRemoveTubeFromRoute = (routeId: string, tubeId: string) => {
+    removeTubeFromRoute(routeId, tubeId);
+    recordChange();
+    addToast({
+      title: 'Cable Retirado',
+      message: 'Se retiró el circuito de este tramo de tubería',
+      type: 'info'
+    });
+  };
+
+  const selectedRoute = useMemo(() => {
+    return activeRouteId ? routes.find((r) => r.id === activeRouteId) : null;
+  }, [activeRouteId, routes]);
+
   const fullProjectState: ProjectState = {
     phase: activePhase,
     lvlId: currentLevel,
@@ -453,8 +585,19 @@ function EditorContent() {
         <PhaseTabs activePhase={activePhase} onChangePhase={(ph) => setActivePhase(ph)} />
         <div className="hidden sm:flex items-center gap-3 text-xs text-slate-400">
           <button
+            onClick={openPricesModal}
+            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-lg font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
+            title="Configurar precios globales de materiales"
+          >
+            <svg className="w-3.5 h-3.5 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Precios Globales
+          </button>
+
+          <button
             onClick={handleExportPDF}
-            className="px-2.5 py-1 bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40 rounded-lg font-medium transition-colors flex items-center gap-1.5"
+            className="px-2.5 py-1 bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/40 rounded-lg font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
             title="Descargar documentación en PDF"
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -477,11 +620,27 @@ function EditorContent() {
               activePhase={activePhase}
               activeTool={activeTool}
               onSelectTool={(t) => setActiveTool(t)}
+              onActionClick={(actionId) => {
+                if (actionId === 'action_global_prices') {
+                  openPricesModal();
+                } else if (actionId === 'action_refresh_bom') {
+                  recordChange();
+                  addToast({
+                    title: 'Presupuesto Actualizado',
+                    message: 'Se recalcularon todas las cantidades y longitudes métricas.',
+                    type: 'success'
+                  });
+                }
+              }}
             />
 
             {/* Center Interactive CAD Canvas */}
             <div className="flex-1 relative h-full overflow-hidden">
-              <Canvas2D onSaveState={recordChange} />
+              <Canvas2D
+                onSaveState={recordChange}
+                onOpenWireModal={(routeId) => handleOpenWireModal(routeId, null)}
+                onToast={(msg) => addToast({ title: 'Aviso CAD', message: msg, type: 'info' })}
+              />
             </div>
 
             {/* Right Properties Panel */}
@@ -494,6 +653,8 @@ function EditorContent() {
                 tubes: tubes.length,
                 routes: routes.length
               }}
+              routes={routes}
+              activePhase={activePhase}
               onUpdateWall={(id, updates) => {
                 const wall = walls.find((w) => w.id === id);
                 if (wall) {
@@ -524,6 +685,16 @@ function EditorContent() {
                 clearSelection();
                 recordChange();
               }}
+              onEditRoute={(rId, tId) => handleOpenWireModal(rId, tId)}
+              onRemoveTubeFromRoute={(rId, tId) => handleRemoveTubeFromRoute(rId, tId)}
+              onStartWire={() => {
+                setActiveTool('wire');
+                addToast({
+                  title: 'Modo Enrutar Cable',
+                  message: 'Haz clic en la caja de inicio y selecciona tuberías para la ruta.',
+                  type: 'info'
+                });
+              }}
             />
           </>
         ) : activePhase === 3 ? (
@@ -547,6 +718,7 @@ function EditorContent() {
                 setCustomMats(customMats.filter((_, i) => i !== idx));
                 recordChange();
               }}
+              onOpenGlobalPrices={openPricesModal}
             />
           </div>
         ) : (
@@ -556,6 +728,28 @@ function EditorContent() {
           </div>
         )}
       </div>
+
+      {/* Wire Route Modal (F5-02) */}
+      <WireRouteModal
+        isOpen={isWireModalOpen}
+        onClose={() => {
+          setIsWireModalOpen(false);
+          setActiveRouteId(null);
+          setEditingTubeId(null);
+        }}
+        routeId={activeRouteId}
+        editingTubeId={editingTubeId}
+        initialCircuitName={selectedRoute ? selectedRoute.name : `Cto. ${routes.length + 1}`}
+        initialCables={selectedRoute ? selectedRoute.cables : undefined}
+        onSaveRoute={handleSaveWireRoute}
+        onDeleteRoute={handleDeleteWireRoute}
+      />
+
+      {/* Global Prices Modal (F5-05) */}
+      <PricesModal
+        isOpen={isPricesModalOpen}
+        onClose={closePricesModal}
+      />
     </div>
   );
 }

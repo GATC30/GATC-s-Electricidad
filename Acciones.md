@@ -134,12 +134,12 @@
 
 | ID | Tarea | Prioridad | Estado |
 |------|------|------|------|
-| F5-01 | Implementar Fase 2 en el canvas — Asignación de dispositivos a cajas, renderizado de simbología eléctrica (usar `src/engine/symbols.ts`), etiquetas, herramienta de enrutamiento de cables (`wire` tool) | 🟥 | ⬜ |
-| F5-02 | Crear `src/components/modals/WireRouteModal.tsx` — Modal para configurar circuitos: nombre del circuito, lista de conductores (tipo, calibre, color), colores recientes. Migrar toda la lógica de `openWireModal`, `renderCableRows`, `saveWireRoute` | 🟧 | ⬜ |
-| F5-03 | Crear `src/components/phases/QuoteView.tsx` — Vista de Fase 3 con tabla de presupuesto: BOM automático usando `src/engine/bom.ts`, precios editables, materiales custom, total. Reemplazar `innerHTML` por componentes React | 🟧 | ⬜ |
-| F5-04 | Crear `src/components/phases/MemoryView.tsx` — Vista de Fase 4: condiciones arquitectónicas, condiciones eléctricas, resumen de cajas, circuitos por tablero. Componentes React en lugar de `innerHTML` | 🟨 | ⬜ |
-| F5-05 | Crear `src/components/modals/PricesModal.tsx` — Modal de precios globales con categorías (conductores, accesorios, tableros, tuberías). Persistir en store separado | 🟨 | ⬜ |
-| F5-06 | Crear `src/stores/prices-store.ts` — Store Zustand separado para precios globales: carga inicial de defaults del catálogo, persistencia en localStorage, merge con precios por proyecto | 🟨 | ⬜ |
+| F5-01 | Implementar Fase 2 en el canvas — Asignación de dispositivos a cajas, renderizado de simbología eléctrica (usar `src/engine/symbols.ts`), etiquetas, herramienta de enrutamiento de cables (`wire` tool) | 🟥 | ✅ |
+| F5-02 | Crear `src/components/modals/WireRouteModal.tsx` — Modal para configurar circuitos: nombre del circuito, lista de conductores (tipo, calibre, color), colores recientes. Migrar toda la lógica de `openWireModal`, `renderCableRows`, `saveWireRoute` | 🟧 | ✅ |
+| F5-03 | Crear `src/components/phases/QuoteView.tsx` — Vista de Fase 3 con tabla de presupuesto: BOM automático usando `src/engine/bom.ts`, precios editables, materiales custom, total. Reemplazar `innerHTML` por componentes React | 🟧 | ✅ |
+| F5-04 | Crear `src/components/phases/MemoryView.tsx` — Vista de Fase 4: condiciones arquitectónicas, condiciones eléctricas, resumen de cajas, circuitos por tablero. Componentes React en lugar de `innerHTML` | 🟨 | ✅ |
+| F5-05 | Crear `src/components/modals/PricesModal.tsx` — Modal de precios globales con categorías (conductores, accesorios, tableros, tuberías). Persistir en store separado | 🟨 | ✅ |
+| F5-06 | Crear `src/stores/prices-store.ts` — Store Zustand separado para precios globales: carga inicial de defaults del catálogo, persistencia en localStorage, merge con precios por proyecto | 🟨 | ✅ |
 
 **Criterio de aceptación:** Las 4 fases del editor funcionan completas. Se puede asignar un dispositivo a una caja, enrutar cables, ver el presupuesto calculado automáticamente y la memoria descriptiva con datos reales del plano.
 
