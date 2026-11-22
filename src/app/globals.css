@@ -1,23 +1,59 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #080b12;
-  --foreground: #f1f5f9;
+  --background: #f8fafc;
+  --foreground: #0f172a;
   --font-inter: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --mouseX: 50vw;
   --mouseY: 50vh;
+  
+  /* Palette Design System (Light) */
+  --color-primary: #4f46e5;
+  --color-primary-hover: #4338ca;
+  --color-secondary: #7c3aed;
+  --color-success: #10b981;
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+  --editor-bg: #f8fafc;
+  --editor-surface: #ffffff;
+  --editor-border: #e2e8f0;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --canvas-bg: #f1f5f9;
+}
+
+.dark {
+  --background: #080b12;
+  --foreground: #f1f5f9;
+  
+  /* Palette Design System (Dark) */
+  --color-primary: #6366f1;
+  --color-primary-hover: #4f46e5;
+  --color-secondary: #8b5cf6;
+  --color-success: #10b981;
+  --color-danger: #ef4444;
+  --color-warning: #f59e0b;
+  --editor-bg: #080b12;
+  --editor-surface: #0f172a;
+  --editor-border: #1e293b;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --canvas-bg: #0b0f19;
 }
 
 body {
   margin: 0;
   padding: 0;
   font-family: var(--font-inter);
-  background-color: #080b12;
-  color: #f1f5f9;
+  background-color: var(--background);
+  color: var(--foreground);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* Custom Scrollbars */
@@ -54,4 +90,22 @@ body {
   background-image: 
     linear-gradient(to right, rgba(203, 213, 225, 0.08) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(203, 213, 225, 0.08) 1px, transparent 1px);
+}
+
+.bg-grid-pattern-dark {
+  background-size: 20px 20px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+}
+
+/* Base interactive transitions */
+button, a, input, select, textarea {
+  transition: all 0.15s ease-in-out;
+}
+
+/* Selection */
+::selection {
+  background-color: rgba(79, 70, 229, 0.35);
+  color: inherit;
 }

@@ -27,15 +27,15 @@
 
 | ID | Tarea | Prioridad | Estado |
 |------|------|------|------|
-| F0-01 | Inicializar proyecto Next.js 14 con App Router y TypeScript (`npx create-next-app@latest gatc --typescript --tailwind --app --src-dir`) | 🟥 | ⬜ |
-| F0-02 | Instalar dependencias core: `zustand`, `immer`, `three`, `@react-three/fiber`, `@react-three/drei`, `jspdf`, `next-auth` | 🟥 | ⬜ |
-| F0-03 | Configurar `tailwind.config.ts` con la paleta de colores del sistema de diseño (indigo, purple, emerald, amber, slate) | 🟧 | ⬜ |
-| F0-04 | Crear estructura de carpetas completa (`src/engine/`, `src/stores/`, `src/hooks/`, `src/components/`, `src/lib/`) | 🟥 | ⬜ |
-| F0-05 | Configurar `vercel.json`, `tsconfig.json` paths aliases (`@/engine`, `@/stores`, `@/components`) y `next.config.ts` | 🟧 | ⬜ |
-| F0-06 | Crear `.env.local` con variables placeholder (DATABASE_URL, NEXTAUTH_SECRET, etc.) y `.env.example`. Añadir `.env.local` a `.gitignore` | 🟧 | ⬜ |
-| F0-07 | Configurar ESLint + Prettier con reglas estrictas de TypeScript. Añadir `lint-staged` + `husky` para pre-commit hooks | 🟨 | ⬜ |
-| F0-08 | Configurar `src/app/globals.css` — Importar fuente Inter desde Google Fonts, scrollbar custom, transiciones base, CSS variables del sistema de diseño | 🟨 | ⬜ |
-| F0-09 | Inicializar repositorio Git. Crear `.gitignore` completo (node_modules, .next, .env.local, .vercel). Primer commit con estructura vacía | 🟥 | ⬜ |
+| F0-01 | Inicializar proyecto Next.js 14 con App Router y TypeScript (`npx create-next-app@latest gatc --typescript --tailwind --app --src-dir`) | 🟥 | ✅ |
+| F0-02 | Instalar dependencias core: `zustand`, `immer`, `three`, `@react-three/fiber`, `@react-three/drei`, `jspdf`, `next-auth` | 🟥 | ✅ |
+| F0-03 | Configurar `tailwind.config.ts` con la paleta de colores del sistema de diseño (indigo, purple, emerald, amber, slate) | 🟧 | ✅ |
+| F0-04 | Crear estructura de carpetas completa (`src/engine/`, `src/stores/`, `src/hooks/`, `src/components/`, `src/lib/`) | 🟥 | ✅ |
+| F0-05 | Configurar `vercel.json`, `tsconfig.json` paths aliases (`@/engine`, `@/stores`, `@/components`) y `next.config.ts` | 🟧 | ✅ |
+| F0-06 | Crear `.env.local` con variables placeholder (DATABASE_URL, NEXTAUTH_SECRET, etc.) y `.env.example`. Añadir `.env.local` a `.gitignore` | 🟧 | ✅ |
+| F0-07 | Configurar ESLint + Prettier con reglas estrictas de TypeScript. Añadir `lint-staged` + `husky` para pre-commit hooks | 🟨 | ✅ |
+| F0-08 | Configurar `src/app/globals.css` — Importar fuente Inter desde Google Fonts, scrollbar custom, transiciones base, CSS variables del sistema de diseño | 🟨 | ✅ |
+| F0-09 | Inicializar repositorio Git. Crear `.gitignore` completo (node_modules, .next, .env.local, .vercel). Primer commit con estructura vacía | 🟥 | ✅ |
 
 > [!TIP]
 > No instalar las dependencias de base de datos aún (Vercel Postgres, KV, Blob). Se agregarán en la Fase 6 cuando se implemente el backend.
