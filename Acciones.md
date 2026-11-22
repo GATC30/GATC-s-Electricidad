@@ -153,12 +153,12 @@
 
 | ID | Tarea | Prioridad | Estado |
 |------|------|------|------|
-| F6-01 | Instalar y configurar `@vercel/postgres`, `@vercel/kv`, `@vercel/blob`. Crear esquema Prisma con tablas `User`, `Project`, `GlobalPrices`, `Export` | 🟥 | ⬜ |
-| F6-02 | Configurar NextAuth.js v5 con proveedores OAuth (Google, GitHub) y protección de rutas API. Middleware para sesiones | 🟧 | ⬜ |
-| F6-03 | Crear API Routes CRUD en `src/app/api/projects/`: `GET` (listar), `POST` (crear), `GET [id]` (obtener), `PUT [id]` (actualizar), `DELETE [id]` (eliminar) | 🟥 | ⬜ |
-| F6-04 | Crear API Route `src/app/api/prices/route.ts` — CRUD de precios globales por usuario | 🟨 | ⬜ |
-| F6-05 | Implementar `src/lib/storage.ts` — Adapter de almacenamiento dual: guardar primero en IndexedDB local (offline-first), sincronizar con API cuando haya conexión. Cola de sync pendiente | 🟧 | ⬜ |
-| F6-06 | Crear `src/hooks/useAutoSave.ts` — Auto-guardado con debounce de 2 segundos. Indicador visual de estado: guardado ✅, guardando ⏳, error ❌, offline 📴 | 🟨 | ⬜ |
+| F6-01 | Instalar y configurar `@vercel/postgres`, `@vercel/kv`, `@vercel/blob`. Crear esquema Prisma con tablas `User`, `Project`, `GlobalPrices`, `Export` | 🟥 | ✅ |
+| F6-02 | Configurar NextAuth.js v5 con proveedores OAuth (Google, GitHub) y protección de rutas API. Middleware para sesiones | 🟧 | ✅ |
+| F6-03 | Crear API Routes CRUD en `src/app/api/projects/`: `GET` (listar), `POST` (crear), `GET [id]` (obtener), `PUT [id]` (actualizar), `DELETE [id]` (eliminar) | 🟥 | ✅ |
+| F6-04 | Crear API Route `src/app/api/prices/route.ts` — CRUD de precios globales por usuario | 🟨 | ✅ |
+| F6-05 | Implementar `src/lib/storage.ts` — Adapter de almacenamiento dual: guardar primero en IndexedDB local (offline-first), sincronizar con API cuando haya conexión. Cola de sync pendiente | 🟧 | ✅ |
+| F6-06 | Crear `src/hooks/useAutoSave.ts` — Auto-guardado con debounce de 2 segundos. Indicador visual de estado: guardado ✅, guardando ⏳, error ❌, offline 📴 | 🟨 | ✅ |
 
 **Criterio de aceptación:** Un usuario puede registrarse, crear proyectos que persistan en la nube, y acceder desde cualquier dispositivo. La app sigue funcionando offline y sincroniza al reconectarse.
 

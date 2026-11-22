@@ -22,11 +22,13 @@ import { sanitizeProjectName } from '@/utils/sanitize';
 import { safeSetItem, safeGetItem, onStorageError } from '@/utils/storage';
 import { validateGatcFile } from '@/lib/validators';
 import { generateProjectPDF } from '@/lib/pdf-generator';
+import { storageAdapter } from '@/lib/storage';
 import { generateId } from '@/utils/math';
 import { useEditorStore } from '@/stores/editor-store';
 import { useProjectStore, ProjectSnapshot } from '@/stores/project-store';
 import { usePricesStore } from '@/stores/prices-store';
 import { useHistory } from '@/hooks/useHistory';
+import { useAutoSave } from '@/hooks/useAutoSave';
 
 function EditorContent() {
   const params = useParams();
@@ -122,41 +124,16 @@ function EditorContent() {
     }
   });
 
-  // Save current project state to localStorage using safeSetItem (BUG-03)
-  const saveToStorage = useCallback(() => {
-    setIsSaved(false);
-    const stateToSave: ProjectState = {
-      phase: activePhase,
-      lvlId: currentLevel,
-      levels,
-      is3D,
-      tool: activeTool,
-      showDims,
-      showRulers,
-      pConf: projectConfig,
-      walls,
-      boxes,
-      tubes,
-      routes,
-      customMats,
-      overrides,
-      prices,
-      recentColors: []
-    };
-
-    const result = safeSetItem(`ecad_data_${projectId}`, stateToSave);
-
-    // Update timestamp in project index
-    const indexList = safeGetItem<any[]>('ecad_projects_index', []);
-    if (Array.isArray(indexList)) {
-      const updated = indexList.map((p: any) =>
-        p.id === projectId ? { ...p, updated: Date.now() } : p
-      );
-      safeSetItem('ecad_projects_index', updated);
-    }
-
-    setIsSaved(result.success);
-  }, [
+  // Construct full project state for auto-saving (F6-06)
+  const currentStateToSave: ProjectState = useMemo(() => ({
+    phase: activePhase,
+    lvlId: currentLevel,
+    levels,
+    is3D,
+    tool: activeTool,
+    showDims,
+    showRulers,
+    pConf: projectConfig,
     walls,
     boxes,
     tubes,
@@ -164,24 +141,41 @@ function EditorContent() {
     customMats,
     overrides,
     prices,
-    projectConfig,
-    levels,
+    recentColors: []
+  }), [
     activePhase,
     currentLevel,
+    levels,
     is3D,
     activeTool,
     showDims,
     showRulers,
-    projectId,
-    setIsSaved
+    projectConfig,
+    walls,
+    boxes,
+    tubes,
+    routes,
+    customMats,
+    overrides,
+    prices
   ]);
 
-  // Record history snapshot and auto-save on state change
+  // Debounced auto-save hook with 2-second debounce and dual-storage sync (F6-06)
+  const {
+    status: autoSaveStatus,
+    forceSave
+  } = useAutoSave(projectId, projectName, currentStateToSave, {
+    debounceMs: 2000,
+    onSaved: () => setIsSaved(true),
+    onError: () => setIsSaved(false)
+  });
+
+  // Record history snapshot on state changes
   const recordChange = useCallback(() => {
     const snap = getSnapshot();
     pushState(snap);
-    saveToStorage();
-  }, [getSnapshot, pushState, saveToStorage]);
+    setIsSaved(false);
+  }, [getSnapshot, pushState, setIsSaved]);
 
   // Derive fresh selected object dynamically in every render (BUG-04 fix)
   const selectedElement = useMemo(() => {
@@ -216,44 +210,45 @@ function EditorContent() {
     return unsubscribe;
   }, [addToast]);
 
-  // Load project from localStorage (with validation BUG-10 & XSS sanitization BUG-01)
+  // Load project from local storage / IndexedDB with fallback (F6-05)
   useEffect(() => {
-    try {
-      let loadedName = 'Proyecto CAD';
-      const indexList = safeGetItem<any[]>('ecad_projects_index', []);
-      if (Array.isArray(indexList)) {
-        const meta = indexList.find((p: any) => p.id === projectId);
-        if (meta && meta.name) {
-          loadedName = sanitizeProjectName(meta.name);
-        }
-      }
+    let isMounted = true;
+    async function loadProjectData() {
+      try {
+        const stored = await storageAdapter.loadProject(projectId);
+        if (!isMounted) return;
 
-      const storedData = safeGetItem<any>(`ecad_data_${projectId}`);
-      if (storedData) {
-        const validation = validateGatcFile(storedData);
-        if (validation.sanitizedState) {
-          const s = validation.sanitizedState;
-          initProject(projectId, loadedName, s);
-          if (s.phase) setActivePhase(s.phase);
-          if (s.lvlId) setCurrentLevel(s.lvlId);
-          clearHistory({
-            walls: s.walls || [],
-            boxes: s.boxes || [],
-            tubes: s.tubes || [],
-            routes: s.routes || [],
-            levels: s.levels || [1],
-            config: s.pConf || { wW: 0.2, wH: 2.8 }
-          });
-          return;
+        if (stored && stored.state) {
+          const validation = validateGatcFile(stored.state);
+          if (validation.sanitizedState) {
+            const s = validation.sanitizedState;
+            initProject(projectId, stored.name, s);
+            if (s.phase) setActivePhase(s.phase);
+            if (s.lvlId) setCurrentLevel(s.lvlId);
+            clearHistory({
+              walls: s.walls || [],
+              boxes: s.boxes || [],
+              tubes: s.tubes || [],
+              routes: s.routes || [],
+              levels: s.levels || [1],
+              config: s.pConf || { wW: 0.2, wH: 2.8 }
+            });
+            return;
+          }
         }
-      }
 
-      // Default initialization
-      initProject(projectId, loadedName);
-      clearHistory(getSnapshot());
-    } catch (e) {
-      console.error('Error loading project:', e);
+        // Fallback default initialization
+        initProject(projectId, 'Proyecto CAD');
+        clearHistory(getSnapshot());
+      } catch (e) {
+        console.error('Error loading project:', e);
+      }
     }
+
+    loadProjectData();
+    return () => {
+      isMounted = false;
+    };
   }, [projectId, initProject, setActivePhase, setCurrentLevel, clearHistory, getSnapshot]);
 
   // Keyboard shortcuts (Ctrl+Z for Undo, Ctrl+Y for Redo)
@@ -578,6 +573,7 @@ function EditorContent() {
         onToggle3D={handleToggle3D}
         onExport={handleExport}
         isSaved={isSaved}
+        saveStatus={autoSaveStatus}
       />
 
       {/* 2. Phase Navigation Bar */}

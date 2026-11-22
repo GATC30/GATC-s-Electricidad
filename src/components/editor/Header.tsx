@@ -25,6 +25,7 @@ export interface HeaderProps {
   onToggle3D: () => void;
   onExport: () => void;
   isSaved?: boolean;
+  saveStatus?: 'saved' | 'saving' | 'error' | 'offline';
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -46,10 +47,38 @@ export const Header: React.FC<HeaderProps> = ({
   is3D,
   onToggle3D,
   onExport,
-  isSaved = true
+  isSaved = true,
+  saveStatus
 }) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [title, setTitle] = useState(projectName);
+
+  // Derive resolved save status
+  const currentStatus: 'saved' | 'saving' | 'error' | 'offline' =
+    saveStatus || (isSaved ? 'saved' : 'saving');
+
+  const statusConfig = {
+    saved: {
+      label: 'Guardado',
+      badgeClass: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
+      dotClass: 'bg-emerald-400'
+    },
+    saving: {
+      label: 'Guardando...',
+      badgeClass: 'bg-amber-500/10 text-amber-400 border border-amber-500/20',
+      dotClass: 'bg-amber-400 animate-pulse'
+    },
+    error: {
+      label: 'Error guardando',
+      badgeClass: 'bg-rose-500/10 text-rose-400 border border-rose-500/20',
+      dotClass: 'bg-rose-400'
+    },
+    offline: {
+      label: 'Offline (Local)',
+      badgeClass: 'bg-slate-700/60 text-slate-300 border border-slate-600',
+      dotClass: 'bg-slate-400'
+    }
+  }[currentStatus];
 
   const handleTitleBlur = () => {
     setIsEditingTitle(false);
@@ -110,16 +139,13 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
-          {/* Save status pill */}
+          {/* Save status pill (F6-06) */}
           <span
-            className={`hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
-              isSaved
-                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-            }`}
+            className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium transition-all ${statusConfig.badgeClass}`}
+            title={`Estado de persistencia: ${statusConfig.label}`}
           >
-            <span className={`w-1.5 h-1.5 rounded-full ${isSaved ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'}`} />
-            {isSaved ? 'Guardado' : 'Guardando...'}
+            <span className={`w-1.5 h-1.5 rounded-full ${statusConfig.dotClass}`} />
+            {statusConfig.label}
           </span>
         </div>
       </div>

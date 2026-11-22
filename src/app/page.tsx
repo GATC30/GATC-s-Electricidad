@@ -8,6 +8,7 @@ import { ConfirmDialog } from '@/components/ui';
 import { sanitizeProjectName } from '@/utils/sanitize';
 import { safeSetItem, safeGetItem, safeRemoveItem } from '@/utils/storage';
 import { validateGatcFile } from '@/lib/validators';
+import { storageAdapter, SyncStatus } from '@/lib/storage';
 
 export default function HomePage() {
   const router = useRouter();
@@ -111,10 +112,10 @@ export default function HomePage() {
 
   const handleDeleteConfirm = () => {
     if (!deleteId) return;
-    const updated = projects.filter((p) => p.id !== deleteId);
+    const targetId = deleteId;
+    const updated = projects.filter((p) => p.id !== targetId);
     setProjects(updated);
-    safeSetItem('ecad_projects_index', updated);
-    safeRemoveItem(`ecad_data_${deleteId}`);
+    storageAdapter.deleteProject(targetId);
     setDeleteId(null);
   };
 
